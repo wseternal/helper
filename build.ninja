@@ -1,0 +1,40 @@
+prog = helper
+
+libc = musl
+
+staging_dir=/opt/packages/lede_repo/lede/staging_dir
+toolchain_dir=${staging_dir}/toolchain-mips_${libc}
+target_dir = ${staging_dir}/target-mips_${libc}
+
+compile = mips-openwrt-linux-
+cc = ${toolchain_dir}/bin/${compile}gcc
+strip = ${toolchain_dir}/bin/${compile}strip
+
+incdir = ${target_dir}/usr/include
+cflags = "-I${incdir}"
+
+libdir = ${target_dir}/usr/lib
+#ldflags = "-L${libdir} -lubus -lubox -ljson-c -lblobmsg_json -luci"
+ldflags = "-L${libdir}"
+
+rule gobuild
+ command = STAGING_DIR=${staging_dir} CC=${cc} CGO_ENABLED=1 CGO_LDFLAGS=${ldflags} CGO_CFLAGS=${cflags} GOARCH=mips go build -o $out
+
+rule gostrip
+ command = ${strip} -s $in -o $out && rm -f $in
+
+rule goclean
+ command = CC=${cc} CGO_ENABLED=1 CGO_LDFLAGS=${ldflags} CGO_CFLAGS=${cflags} GOARCH=mips go clean
+
+rule gotest
+ command = STAGING_DIR=${staging_dir} CC=${cc} CGO_ENABLED=1 CGO_LDFLAGS=${ldflags} CGO_CFLAGS=${cflags} GOARCH=mips go test -c
+
+build ${prog}-us: gobuild
+
+build $prog: gostrip ${prog}-us
+
+build clean: goclean
+
+build test: gotest
+
+default test
