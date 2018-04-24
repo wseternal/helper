@@ -1,7 +1,7 @@
 package StateMachine
 
 import (
-	"helper/logger"
+	"bitbucket.org/wseternal/helper/logger"
 	"sync"
 	"time"
 )

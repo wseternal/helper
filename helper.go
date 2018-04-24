@@ -2,7 +2,7 @@ package helper
 
 import (
 	"fmt"
-	"helper/logger"
+	"bitbucket.org/wseternal/helper/logger"
 	"log"
 	"os"
 	"os/exec"

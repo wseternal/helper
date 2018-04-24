@@ -2,7 +2,7 @@ package uci
 
 import (
 	"fmt"
-	"helper/conf"
+	"bitbucket.org/wseternal/helper/conf"
 	"strconv"
 	"strings"
 	"uci"

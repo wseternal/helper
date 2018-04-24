@@ -2,9 +2,9 @@ package source_test
 
 import (
 	"fmt"
-	"helper/iohelper/pump"
-	"helper/iohelper/sink"
-	. "helper/iohelper/source"
+	"bitbucket.org/wseternal/helper/iohelper/pump"
+	"bitbucket.org/wseternal/helper/iohelper/sink"
+	. "bitbucket.org/wseternal/helper/iohelper/source"
 	"reflect"
 	"testing"
 )

@@ -3,9 +3,9 @@ package pump
 import (
 	"io"
 
-	"helper/iohelper"
-	"helper/iohelper/sink"
-	"helper/iohelper/source"
+	"bitbucket.org/wseternal/helper/iohelper"
+	"bitbucket.org/wseternal/helper/iohelper/sink"
+	"bitbucket.org/wseternal/helper/iohelper/source"
 )
 
 // Step pump data from r to w once

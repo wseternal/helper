@@ -5,9 +5,9 @@ package sys
 import (
 	"bytes"
 	"fmt"
-	"helper"
-	"helper/iohelper"
-	"helper/logger"
+	"bitbucket.org/wseternal/helper"
+	"bitbucket.org/wseternal/helper/iohelper"
+	"bitbucket.org/wseternal/helper/logger"
 	"io/ioutil"
 	"os"
 	"path"

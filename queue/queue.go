@@ -2,7 +2,7 @@ package queue
 
 import (
 	"fmt"
-	"helper/logger"
+	"bitbucket.org/wseternal/helper/logger"
 	"reflect"
 	"sync"
 	"time"

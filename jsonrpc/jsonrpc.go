@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"helper/logger"
+	"bitbucket.org/wseternal/helper/logger"
 	"io/ioutil"
 	"math"
 	"math/rand"

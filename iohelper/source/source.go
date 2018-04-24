@@ -6,7 +6,7 @@ import (
 
 	"encoding/json"
 	"fmt"
-	"helper/iohelper/filter"
+	"bitbucket.org/wseternal/helper/iohelper/filter"
 	"os"
 	"path"
 )
