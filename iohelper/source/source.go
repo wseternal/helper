@@ -67,7 +67,11 @@ func (src *Source) Read(buffer []byte) (n int, err error) {
 		// a filter may return (0, nil) to indicates that current input data is consumed,
 		// and more input data is need for generating output
 		if n == 0 && err == nil {
-			return 0, nil
+			if !rEOF {
+				return 0, nil
+			} else {
+				return 0, fmt.Errorf("filter %T not return io.EOF when eof parameter is set", f)
+			}
 		}
 	}
 	if rEOF {
