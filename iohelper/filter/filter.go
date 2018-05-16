@@ -6,12 +6,12 @@ import (
 	"io"
 )
 
-// Filter interface for customized actions on each chunk of source or sink
-// Process may return 0, nil to indicate that the input data is consumed,
+// Filter interface for customized actions on each chunk of source or sink.
+// Process may return (nil, nil) to indicate that the input data is consumed,
 // and more data is need to generate valid output.
 // when eof parameter is true, which means the no more data would be provided,
 // valid output must be generated in this case, the err returned must be io.EOF
-// if no other internal error occurred,
+// if no other internal error occurred.
 type Filter interface {
 	Process(p []byte, eof bool) (out []byte, err error)
 }

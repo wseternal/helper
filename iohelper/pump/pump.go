@@ -1,6 +1,7 @@
 package pump
 
 import (
+	"fmt"
 	"io"
 
 	"bitbucket.org/wseternal/helper/iohelper"
@@ -8,9 +9,21 @@ import (
 	"bitbucket.org/wseternal/helper/iohelper/source"
 )
 
+var (
+	DEBUG = false
+)
+
 // Step pump data from r to w once
 func Step(r *source.Source, w *sink.Sink, bufp *[]byte) (n int, err error) {
+	if DEBUG {
+		defer func() {
+			fmt.Printf("step: write %d, err: %v\n", n, err)
+		}()
+	}
 	n, err = r.Read(*bufp)
+	if DEBUG {
+		fmt.Printf("step: read(%s) %d, err: %v\n", r.Name, n, err)
+	}
 	switch {
 	case err == io.EOF:
 		if n > 0 {

@@ -14,6 +14,7 @@ import (
 type Sink struct {
 	io.Writer
 	filters []filter.Filter
+	Name string
 }
 
 // Buffer provides interface of Bytes()
@@ -21,7 +22,10 @@ type Buffer interface {
 	Bytes() []byte
 }
 
-// Chain append filters to the original io.Reader
+// Chain prepend filters to the original io.Writer
+// Pay careful attention: sink filters shall only process
+// the data on the fly, as there is no EOF flag in the write process.
+// EOF only exists in read process (source filters).
 func (snk *Sink) Chain(f ...filter.Filter) *Sink {
 	if snk.filters == nil {
 		snk.filters = make([]filter.Filter, len(f))

@@ -1,24 +1,33 @@
 package source
 
 import (
-	"bytes"
-	"io"
-
+"bytes"
 	"encoding/json"
-	"fmt"
-	"bitbucket.org/wseternal/helper/iohelper/filter"
-	"os"
-	"path"
+"fmt"
+"io"
+"os"
+"path"
+
+
+
+
+
+
+"bitbucket.org/wseternal/helper/iohelper/filter"
+
+
 )
 
 // Source encapsulate the original io.Reader with filters
 type Source struct {
 	io.Reader
-	rEOF    bool
 	filters []filter.Filter
-	buf     bytes.Buffer
 	Name    string
 }
+
+var (
+	DEBUG = false
+)
 
 func (src *Source) Close() (err error) {
 	if c, ok := src.Reader.(io.Closer); ok {
@@ -36,51 +45,35 @@ func (src *Source) Close() (err error) {
 }
 
 // Read implements the io.Reader interface
-func (src *Source) Read(p []byte) (n int, err error) {
-	n, err = src.Reader.Read(p)
-	out := p[:n]
+func (src *Source) Read(buffer []byte) (n int, err error) {
+	n, err = src.Reader.Read(buffer)
+	data := buffer[:n]
+	if DEBUG {
+		fmt.Printf("source: read(%s) original reader %d, err: %v\n", src.Name, n, err)
+	}
 	if len(src.filters) == 0 {
 		return n, err
 	}
-	/*
-	* rEOF: whether the original r is read to EOF
-	* when there are filters, any filter may consume
-	* the input and return 0, nil to indicate that
-	* it need more input to generate valid output.
-	* However, when src.rEOF is true, all chained
-	* filters must finish their job and generate the
-	* final output.
-	 */
-	if !src.rEOF {
-		if err == io.EOF {
-			src.rEOF = true
+	rEOF := false
+	if err == io.EOF {
+		rEOF = true
+	}
+	for _, f := range src.filters {
+		data, err = f.Process(data, rEOF)
+		n = len(data)
+		if !(err == nil || err == io.EOF) {
+			return n, err
 		}
-		for _, f := range src.filters {
-			switch {
-			case err == io.EOF:
-				out, err = f.Process(out, true)
-				n = len(out)
-			case err != nil:
-				// non-eof error occurred, return directly
-				return n, err
-			case err == nil:
-				if n > 0 {
-					out, err = f.Process(out, false)
-					n = len(out)
-				} else {
-					/* a filter return 0, nil, which means the filter consumed all input bytes
-					and still need more to generate output, no need to process more filters
-					*/
-					return 0, nil
-				}
-			}
-		}
-		if n == 0 {
+		// a filter may return (0, nil) to indicates that current input data is consumed,
+		// and more input data is need for generating output
+		if n == 0 && err == nil {
 			return 0, nil
 		}
-		src.buf.Write(out)
 	}
-	n, err = src.buf.Read(p)
+	if rEOF {
+		err = io.EOF
+	}
+	copy(buffer, data)
 	return n, err
 }
 
