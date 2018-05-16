@@ -43,15 +43,18 @@ func NewHash(h hash.Hash, onTheFly bool) *Hash {
 
 // Process is the method to satisfy the Filter interface requirement
 func (h *Hash) Process(p []byte, eof bool) (out []byte, err error) {
+	if eof {
+		err = io.EOF
+	}
 	if h.onTheFly {
 		if len(p) > 0 {
 			h.Write(p)
 		}
-		return p, nil
+		return p, err
 	}
 	if eof {
 		out = h.Sum(nil)
-		return out, io.EOF
+		return out, err
 	}
 	h.Write(p)
 	return out, nil
