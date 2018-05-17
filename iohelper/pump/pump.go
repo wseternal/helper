@@ -24,10 +24,22 @@ func Step(r *source.Source, w *sink.Sink, bufp *[]byte) (n int, err error) {
 	if DEBUG {
 		fmt.Printf("step: read(%s) %d, err: %v\n", r.Name, n, err)
 	}
+
+	var toWrite []byte
+	switch err {
+	case source.ModifyNotInPlace:
+		err = nil
+		toWrite = r.DataFiltered
+	case source.EOFModifyNotInPlace:
+		err = io.EOF
+		toWrite = r.DataFiltered
+	default:
+		toWrite = (*bufp)[:n]
+	}
 	switch {
 	case err == io.EOF:
 		if n > 0 {
-			n, err = w.Write((*bufp)[:n])
+			n, err = w.Write(toWrite)
 			if err != nil {
 				return n, err
 			}
@@ -36,7 +48,7 @@ func Step(r *source.Source, w *sink.Sink, bufp *[]byte) (n int, err error) {
 	case err != nil:
 		return n, err
 	default:
-		return w.Write((*bufp)[:n])
+		return w.Write(toWrite)
 	}
 }
 

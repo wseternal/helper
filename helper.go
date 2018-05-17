@@ -2,15 +2,17 @@ package helper
 
 import (
 	"fmt"
-	"bitbucket.org/wseternal/helper/logger"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"sync"
 	"syscall"
+
+	"bitbucket.org/wseternal/helper/logger"
 )
 
 type SigAction struct {
@@ -142,4 +144,25 @@ func OnSignal(f func(), sigs ...syscall.Signal) {
 		}
 		sigActions[sig].Funcs = append(sigActions[sig].Funcs, f)
 	}
+}
+
+func SameSliceBackend(a, b interface{}) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	v1 := reflect.ValueOf(a)
+	v2 := reflect.ValueOf(b)
+	if v1.Type() != v2.Type() {
+		return false
+	}
+	if v1.Kind() != reflect.Slice || v2.Kind() != reflect.Slice {
+		return false
+	}
+	if v1.IsNil() || v2.IsNil() {
+		return false
+	}
+	elemSize := int(v1.Type().Elem().Size())
+	p1 := int(v1.Pointer()) + v1.Cap()*elemSize
+	p2 := int(v2.Pointer()) + v2.Cap()*elemSize
+	return p1 == p2
 }

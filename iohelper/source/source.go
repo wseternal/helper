@@ -1,21 +1,16 @@
 package source
 
 import (
-"bytes"
+	"bytes"
 	"encoding/json"
-"fmt"
-"io"
-"os"
-"path"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
 
-
-
-
-
-
-"bitbucket.org/wseternal/helper/iohelper/filter"
-
-
+	"bitbucket.org/wseternal/helper"
+	"bitbucket.org/wseternal/helper/iohelper/filter"
 )
 
 // Source encapsulate the original io.Reader with filters
@@ -23,10 +18,14 @@ type Source struct {
 	io.Reader
 	filters []filter.Filter
 	Name    string
+
+	DataFiltered []byte
 }
 
 var (
-	DEBUG = false
+	DEBUG               = false
+	ModifyNotInPlace    = errors.New("modified not in place")
+	EOFModifyNotInPlace = errors.New("eof and modified not in place")
 )
 
 func (src *Source) Close() (err error) {
@@ -45,6 +44,10 @@ func (src *Source) Close() (err error) {
 }
 
 // Read implements the io.Reader interface
+// filters of source may produce more data than the original data read from
+// the io.Reader, in that case, to avoid unnecessary copy, we hold
+// the data returned by filters in this field, and the read function
+// would set err as source.ModifyNotInPlace
 func (src *Source) Read(buffer []byte) (n int, err error) {
 	n, err = src.Reader.Read(buffer)
 	data := buffer[:n]
@@ -58,6 +61,9 @@ func (src *Source) Read(buffer []byte) (n int, err error) {
 	if err == io.EOF {
 		rEOF = true
 	}
+
+	src.DataFiltered = nil
+
 	for _, f := range src.filters {
 		data, err = f.Process(data, rEOF)
 		n = len(data)
@@ -74,10 +80,28 @@ func (src *Source) Read(buffer []byte) (n int, err error) {
 			}
 		}
 	}
-	if rEOF {
-		err = io.EOF
+
+	// after process of all filters, if no output data, just return
+	if n == 0 {
+		return n, err
 	}
-	copy(buffer, data)
+
+	// check whether data slice and the buffer slice share the same backend
+	if helper.SameSliceBackend(buffer, data) {
+		if &buffer[0] != &data[0] {
+			copy(buffer, data)
+		}
+		if rEOF {
+			err = io.EOF
+		}
+	} else {
+		src.DataFiltered = data
+		if rEOF {
+			err = EOFModifyNotInPlace
+		} else {
+			err = ModifyNotInPlace
+		}
+	}
 	return n, err
 }
 

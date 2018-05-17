@@ -12,19 +12,20 @@ func init() {
 	flag.StringVar(&fn, "f", "", "file name to test")
 }
 
-func TestIP2Mac(t *testing.T) {
-	mac, err := IP2Mac("1.1.1.1", false)
-	fmt.Printf("mac %v, err: %v\n", mac, err)
-}
-
-func TestGetDefaultRoute(t *testing.T) {
-	ip, dev, err := GetDefaultRoute()
-	fmt.Printf("ip: %v, dev: %v, err: %v\n", ip, dev, err)
-}
-
 func TestFileMode(t *testing.T) {
 	fmt.Printf("IsFile: %t\n", IsFile(fn))
 	fmt.Printf("IsDir: %t\n", IsDir(fn))
 	fmt.Printf("IsSymbolLink: %t\n", IsSymbolLink(fn))
 	fmt.Printf("IsUnixSocket: %t\n", IsUnixSocket(fn))
+}
+
+func TestSameSliceBackend(t *testing.T) {
+	bk := make([]byte, 32)
+	bk2 := make([]byte, 8)
+	s1 := bk[1:5]
+	s2 := bk[:0]
+	fmt.Printf("bk[1:5] bk[:0] the same backend: %v\n", SameSliceBackend(s1, s2))
+	fmt.Printf("bk[1:5] bk the same backend: %v\n", SameSliceBackend(s1, bk))
+	fmt.Printf("bk[:0] bk2 the same backend: %v\n", SameSliceBackend(s2, bk2))
+	fmt.Printf("bk[:0] bk2 the same backend: %v\n", SameSliceBackend(s2, bk2))
 }
