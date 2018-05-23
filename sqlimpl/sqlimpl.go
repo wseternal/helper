@@ -10,6 +10,7 @@ import (
 
 	// add mysql driver implement
 	"errors"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -103,7 +104,11 @@ func (t *DataTable) InnerJoin(tbAnother *DataTable, joinCond string, whereCond s
 		return err
 	}
 	defer stmt.Close()
-	return stmt.QueryRow().Scan(vals...)
+	err = stmt.QueryRow().Scan(vals...)
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("%s", "no result")
+	}
+	return err
 }
 
 // Find get column value of table and place it in the val,
