@@ -44,7 +44,9 @@ func Recover(msg string, stackTrace, panic bool) {
 	}
 }
 
-// ShellCommandn run specific command using sh -c, meanwhile, set the pgid for child process
+// ShellCommand run specific command using sh -c, meanwhile, set the Setpgid flag
+// by default, pgid is 0, which make the created process as a new process group,
+// set the Cmd.SysProcAttr.Pgid manually if it not as expected.
 func ShellCommand(format string, arg ...interface{}) *exec.Cmd {
 	var cmd string
 	if len(arg) > 0 {
@@ -54,7 +56,9 @@ func ShellCommand(format string, arg ...interface{}) *exec.Cmd {
 	}
 	logger.LogD("ShellCommand: %s\n", cmd)
 	c := exec.Command("sh", "-c", cmd)
-	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	c.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 	return c
 }
 
