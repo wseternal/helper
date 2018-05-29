@@ -758,6 +758,8 @@ func (rdb *RDB) Info(w io.Writer, verbose bool) error {
 	return nil
 }
 
+// New create RDB instance with all existed column families.
+// use Open if new column family need be created if missing.
 func New(path string, readonly bool) (rdb *RDB, err error) {
 	if len(path) == 0 {
 		flag.Usage()
