@@ -7,7 +7,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"flag"
 	"io"
 	"strconv"
 	"time"
@@ -31,7 +30,9 @@ type CFInfo struct {
 
 type RDB struct {
 	*rocksdb.DB
-	CFHs CFHandles
+	CFHs      CFHandles
+	WriteOpts *rocksdb.WriteOptions
+	ReadOpts  *rocksdb.ReadOptions
 }
 
 type CFOptions map[string]*rocksdb.Options
@@ -388,15 +389,15 @@ func NewDBOptions() *rocksdb.Options {
 	// concurrent_prepare default false, If enabled it uses two queues for writes
 	// manual_wal_flush: default false, If true WAL is not flushed automatically after each write. Instead it relies on manual invocation of FlushWAL to write the WAL buffer to its file.
 	// TODO add dump_malloc_stats
+	opts.SetKeepLogFileNum(1)
 	return opts
 }
 
-// Open if fn does not exist when opening, CreateIfMissing could be set to avoid opening error
-func Open(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb *RDB, err error) {
+// New if fn does not exist when opening, CreateIfMissing could be set to avoid opening error
+func New(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb *RDB, err error) {
 	if opts == nil {
 		opts = NewDBOptions()
 	}
-
 	if cfOpts == nil {
 		cfOpts = make(CFOptions, 1)
 	}
@@ -416,7 +417,14 @@ func Open(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rd
 
 	keys, values := cfOpts.GetKVPaire()
 
-	rdb = &RDB{}
+	// duplicate
+	readOpts := *DefaultReadOption
+	writeOpts := *DefaultWriteOption
+
+	rdb = &RDB{
+		ReadOpts:  &readOpts,
+		WriteOpts: &writeOpts,
+	}
 
 	defer func() {
 		if err != nil && rdb.DB != nil {
@@ -565,8 +573,14 @@ func (rdb *RDB) SeekKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byte {
 	return nil
 }
 
-func (rdb *RDB) GetCF(opts *rocksdb.ReadOptions, cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
-	data, err := rdb.DB.GetCF(opts, cf, key)
+func (rdb *RDB) PutCF(cf *rocksdb.ColumnFamilyHandle, key, value []byte) error {
+	err := rdb.DB.PutCF(rdb.WriteOpts, cf, key, value)
+	rdb.Flush()
+	return err
+}
+
+func (rdb *RDB) GetCF(cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
+	data, err := rdb.DB.GetCF(rdb.ReadOpts, cf, key)
 	if err != nil {
 		return nil, err
 	}
@@ -806,22 +820,6 @@ func (rdb *RDB) Info(w io.Writer, verbose bool) error {
 	}
 	w.Write(data)
 	return nil
-}
-
-// New create RDB instance with all existed column families.
-// use Open if new column family need be created if missing.
-func New(path string, readonly bool) (rdb *RDB, err error) {
-	if len(path) == 0 {
-		flag.Usage()
-		return nil, fmt.Errorf("%s", "dbpath is required")
-	}
-
-	dbOpt := rocksdb.NewDefaultOptions()
-	dbOpt.SetKeepLogFileNum(1)
-	if rdb, err = Open(path, dbOpt, nil, readonly); err != nil {
-		return nil, fmt.Errorf("open db %s failed, error: %s\n", path, err)
-	}
-	return rdb, nil
 }
 
 func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {

@@ -22,7 +22,7 @@ func initDB(dbpath string) (rdb *RDB, err error) {
 			return nil, err
 		}
 	}
-	rdb, err = Open(dbpath, nil, nil, false)
+	rdb, err = New(dbpath, nil, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func TestCreateOpen(t *testing.T) {
 }
 
 func BenchmarkWrite(b *testing.B) {
-	rdb, err := Open("./r.db", nil, nil, false)
+	rdb, err := New("./r.db", nil, nil, false)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func BenchmarkWrite(b *testing.B) {
 }
 
 func BenchmarkIter(b *testing.B) {
-	rdb, err := Open("./r.db", nil, nil, false)
+	rdb, err := New("./r.db", nil, nil, false)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func BenchmarkIter(b *testing.B) {
 }
 
 func BenchmarkRead(b *testing.B) {
-	rdb, err := Open("./r.db", nil, nil, false)
+	rdb, err := New("./r.db", nil, nil, false)
 	if err != nil {
 		b.Fatal(err)
 	}

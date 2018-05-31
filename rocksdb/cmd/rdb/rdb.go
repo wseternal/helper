@@ -3,15 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/iohelper/sink"
-	"bitbucket.org/wseternal/helper/logger"
-	"bitbucket.org/wseternal/helper/rocksdb"
 	"io"
 	"net/http"
 	"os"
 	"os/user"
 	"time"
+
+	"bitbucket.org/wseternal/helper"
+	"bitbucket.org/wseternal/helper/iohelper/sink"
+	"bitbucket.org/wseternal/helper/logger"
+	"bitbucket.org/wseternal/helper/rocksdb"
 )
 
 type Option struct {
@@ -257,7 +258,7 @@ func (cmd *DBCmd) doSubCommand() error {
 
 func (cmd *DBCmd) initDB() error {
 	var err error
-	if cmd.rdb, err = rocksdb.New(cmd.dbpath, cmd.readonly); err != nil {
+	if cmd.rdb, err = rocksdb.New(cmd.dbpath, nil, nil, cmd.readonly); err != nil {
 		return err
 	}
 	return nil
