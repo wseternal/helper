@@ -67,10 +67,10 @@ type RangeOption struct {
 	abortChan <-chan bool
 	abort     bool
 
-	// taskDone is set when range option finished,
-	// so go routine which selects abortChan and taskDone
+	// done is set when range option finished,
+	// so go routine which selects abortChan and done
 	// channel could be finished.
-	taskDone chan int
+	done chan int
 }
 
 type HijackTsInKey func(ts string, key []byte) (newKey []byte, nextKey []byte)
@@ -126,25 +126,25 @@ func NewRangeOption() *RangeOption {
 	}
 }
 
-func (opt *RangeOption) TaskDone() {
-	if opt.taskDone != nil {
-		opt.taskDone <- 0
+func (opt *RangeOption) taskDone() {
+	if opt.done != nil {
+		opt.done <- 0
 	}
 }
-func (opt *RangeOption) TaskWatcherThread() {
-	if opt.abortChan == nil || opt.taskDone == nil {
+func (opt *RangeOption) taskWatcherThread() {
+	if opt.abortChan == nil || opt.done == nil {
 		return
 	}
 	select {
 	case <-opt.abortChan:
 		opt.abort = true
 		logger.LogI("RangeAction with opt: %+v aborted\n", opt)
-	case <-opt.taskDone:
+	case <-opt.done:
 		logger.LogI("RangeAction with opt: %+v finished\n", opt)
 	}
 	opt.abortChan = nil
-	close(opt.taskDone)
-	opt.taskDone = nil
+	close(opt.done)
+	opt.done = nil
 }
 
 func GenHijackTsInKeyByIndex(idx int, sep []byte) HijackTsInKey {
@@ -391,6 +391,7 @@ func NewDBOptions() *rocksdb.Options {
 	return opts
 }
 
+// Open if fn does not exist when opening, CreateIfMissing could be set to avoid opening error
 func Open(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb *RDB, err error) {
 	if opts == nil {
 		opts = NewDBOptions()
@@ -402,8 +403,10 @@ func Open(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rd
 	cfOpts.AddDefaultCF()
 
 	var cfsDB []string
-	if cfsDB, err = rocksdb.ListColumnFamilies(opts, fn); err != nil {
-		return nil, err
+	if Exist(fn) {
+		if cfsDB, err = rocksdb.ListColumnFamilies(opts, fn); err != nil {
+			return nil, err
+		}
 	}
 	for _, v := range cfsDB {
 		if _, found := cfOpts[v]; !found {
@@ -526,15 +529,62 @@ func GetBackupInfo(fn string) ([]*BackupInfo, error) {
 	return res, nil
 }
 
+func (rdb *RDB) KeyExist(cf *rocksdb.ColumnFamilyHandle, key []byte) bool {
+	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
+	defer iter.Close()
+	iter.Seek(key)
+
+	// Slice, map, and function values are not comparable
+	if !(iter.Valid() && string(iter.Key().Data()) == string(key)) {
+		return false
+	}
+	return true
+}
+
+// SeekForPrevKey return the key less than or equal to given key
+// return nil if no matching key found
+func (rdb *RDB) SeekForPrevKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byte {
+	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
+	defer iter.Close()
+	iter.SeekForPrev(key)
+	if iter.Valid() {
+		return append([]byte(nil), iter.Key().Data()...)
+	}
+	return nil
+}
+
+// SeekKey return the key greater than or equal to given key
+// return nil if no matching key found
+func (rdb *RDB) SeekKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byte {
+	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
+	defer iter.Close()
+	iter.Seek(key)
+	if iter.Valid() {
+		return append([]byte(nil), iter.Key().Data()...)
+	}
+	return nil
+}
+
+func (rdb *RDB) GetCF(opts *rocksdb.ReadOptions, cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
+	data, err := rdb.DB.GetCF(opts, cf, key)
+	if err != nil {
+		return nil, err
+	}
+	if data.Data() == nil {
+		return nil, fmt.Errorf("no value found for key: %s", string(key))
+	}
+	defer data.Free()
+
+	return append([]byte(nil), data.Data()...), nil
+}
+
 func (rdb *RDB) Get(cf *rocksdb.ColumnFamilyHandle, key []byte, w io.Writer) error {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
-
 	iter.Seek(key)
 	if !(iter.Valid() && string(iter.Key().Data()) == string(key)) {
 		return fmt.Errorf("can not find key: %s", string(key))
 	}
-
 	var kv struct {
 		Key, Value string
 	}
@@ -566,9 +616,9 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) {
 	defer iter.Close()
 
 	if opt.abortChan != nil {
-		opt.taskDone = make(chan int)
-		go opt.TaskWatcherThread()
-		defer opt.TaskDone()
+		opt.done = make(chan int)
+		go opt.taskWatcherThread()
+		defer opt.taskDone()
 	}
 
 	if len(opt.StartKey) > 0 {
@@ -606,9 +656,9 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 		goto out
 	}
 	if opt.abortChan != nil {
-		opt.taskDone = make(chan int)
-		go opt.TaskWatcherThread()
-		defer opt.TaskDone()
+		opt.done = make(chan int)
+		go opt.taskWatcherThread()
+		defer opt.taskDone()
 	}
 
 	iter.SeekToFirst()
