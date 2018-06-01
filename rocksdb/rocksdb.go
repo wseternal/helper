@@ -573,6 +573,28 @@ func (rdb *RDB) SeekKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byte {
 	return nil
 }
 
+// SeekKeyUpperBound return the first key >= key and the last key <= upper bound
+func (rdb *RDB) SeekKeyUpperBound(cf *rocksdb.ColumnFamilyHandle, key, upperBound []byte) (first, last []byte) {
+	opt := *DefaultReadOption
+	opt.SetIterateUpperBound(upperBound)
+
+	iter := rdb.NewIteratorCF(&opt, cf)
+	defer iter.Close()
+
+	// find the first key  >= key
+	iter.Seek(key)
+	if !iter.Valid() {
+		return nil, nil
+	}
+	first = append([]byte(nil), iter.Key().Data()...)
+
+	// find the last key <= upper bound
+	iter.SeekForPrev(upperBound)
+	last = append([]byte(nil), iter.Key().Data()...)
+
+	return first, last
+}
+
 func (rdb *RDB) PutCF(cf *rocksdb.ColumnFamilyHandle, key, value []byte) error {
 	err := rdb.DB.PutCF(rdb.WriteOpts, cf, key, value)
 	rdb.Flush()
