@@ -126,6 +126,16 @@ func (t *DataTable) Find(column, condition string, val interface{}) error {
 	return stmt.QueryRow().Scan(val)
 }
 
+func (t *DataTable) Delete(condition string) (sql.Result, error) {
+	execStr := fmt.Sprintf("delete from %s %s;", t.Name, condition)
+	stmt, err := t.impl.DB.Prepare(execStr)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	return stmt.Exec()
+}
+
 // Insert insert given values into table, element of keys is mapped with element of args
 // one by one.
 func (t *DataTable) Insert(keys []string, args ...interface{}) (sql.Result, error) {
