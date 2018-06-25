@@ -55,6 +55,26 @@ func (q *Queue) Add(val interface{}) error {
 	return nil
 }
 
+func (q *Queue) Flush() {
+	q.Lock()
+	defer q.Unlock()
+	q.flushQueue()
+}
+
+// Elements return an interface value to the slice of underline elements;
+// if elemType is specified at Queue.New, the return value can be convert to []elemType.
+// otherwise, the return value is []interface{}
+func (q *Queue) Elements() interface{} {
+	if q.elemType == nil {
+		return q.elems
+	}
+	v := reflect.MakeSlice(reflect.SliceOf(q.elemType), len(q.elems), cap(q.elems))
+	for i, elem := range q.elems {
+		v.Index(i).Set(reflect.ValueOf(elem))
+	}
+	return v.Interface()
+}
+
 // flushQueue must be called after locked
 func (q *Queue) flushQueue() {
 	count := len(q.elems)
