@@ -74,6 +74,8 @@ type RangeOption struct {
 	done chan int
 }
 
+type Iterator = rocksdb.Iterator
+
 type HijackTsInKey func(ts string, key []byte) (newKey []byte, nextKey []byte)
 type RangeFunc func(iter *rocksdb.Iterator)
 
@@ -844,6 +846,9 @@ func (rdb *RDB) Info(w io.Writer, verbose bool) error {
 	return nil
 }
 
+// GetRange if key specified, get the value corresponding with the key
+// if StartTS or EndTS specified, use GetRangeByTS
+// otherwise, use GetRangeByKey
 func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {
 	var err error
 	if opt == nil {
