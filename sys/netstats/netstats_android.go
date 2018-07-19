@@ -53,7 +53,7 @@ func GetTotalDataUsageOfCurrentMonth() (usage *Bucket, err error) {
 
 func GetMobileDataUsage() (res []*Bucket, err error) {
 	var data []byte
-	data, err = helper.ShellCommand("dumpsys netstats").Output()
+	data, err = helper.ShellCommand("dumpsys netstats --full").Output()
 	if err != nil {
 		return nil, err
 	}
