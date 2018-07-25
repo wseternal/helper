@@ -27,10 +27,10 @@ func Step(r *source.Source, w *sink.Sink, bufp *[]byte) (n int, err error) {
 
 	var toWrite []byte
 	switch err {
-	case source.ModifyNotInPlace:
+	case source.DataModifiedNotInPlace:
 		err = nil
 		toWrite = r.DataFiltered
-	case source.EOFModifyNotInPlace:
+	case source.EOFDataModifiedNotInPlace:
 		err = io.EOF
 		toWrite = r.DataFiltered
 	default:

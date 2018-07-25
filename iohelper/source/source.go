@@ -23,9 +23,9 @@ type Source struct {
 }
 
 var (
-	DEBUG               = false
-	ModifyNotInPlace    = errors.New("modified not in place")
-	EOFModifyNotInPlace = errors.New("eof and modified not in place")
+	DEBUG                     = false
+	DataModifiedNotInPlace    = errors.New("data modified not in place")
+	EOFDataModifiedNotInPlace = errors.New("eof and data modified not in place")
 )
 
 func (src *Source) Close() (err error) {
@@ -97,9 +97,9 @@ func (src *Source) Read(buffer []byte) (n int, err error) {
 	} else {
 		src.DataFiltered = data
 		if rEOF {
-			err = EOFModifyNotInPlace
+			err = EOFDataModifiedNotInPlace
 		} else {
-			err = ModifyNotInPlace
+			err = DataModifiedNotInPlace
 		}
 	}
 	return n, err
