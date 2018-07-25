@@ -12,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 
+	"path/filepath"
+
 	"bitbucket.org/wseternal/helper/logger"
 )
 
@@ -169,4 +171,15 @@ func SameSliceBackend(a, b interface{}) bool {
 	p1 := int(v1.Pointer()) + v1.Cap()*elemSize
 	p2 := int(v2.Pointer()) + v2.Cap()*elemSize
 	return p1 == p2
+}
+
+func GetDirectorySize(dir string) (size int64, err error) {
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		size += info.Size()
+		return nil
+	})
+	return size, err
 }
