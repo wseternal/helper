@@ -44,7 +44,12 @@ func (sp *SharedPreference) ToFile(fn string) error {
 	}
 	enc := xml.NewEncoder(f)
 	enc.Indent("", "    ")
-	return enc.Encode(sp)
+	err = enc.Encode(sp)
+	if err != nil {
+		return err
+	}
+	f.WriteString("\n")
+	return nil
 }
 
 func (sp *SharedPreference) FromFile(fn string) error {
