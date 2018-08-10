@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"os"
 	"reflect"
 )
 
@@ -18,6 +19,13 @@ func GobEncode(val ...interface{}) (out []byte, err error) {
 		}
 	}
 	return buf.Bytes(), nil
+}
+
+func GobEncodeToFile(fn, val ...interface{}) error {
+	f, err := os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
+	if err != nil {
+		return err
+	}
 }
 
 func GobDecode(data []byte, val ...interface{}) (err error) {
