@@ -4,21 +4,30 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 )
 
 func GobEncode(val ...interface{}) (out []byte, err error) {
 	buf := new(bytes.Buffer)
-	enc := gob.NewEncoder(buf)
+	if err = GobEncodeTo(buf, val); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func GobEncodeTo(w io.Writer, val ...interface{}) error {
+	var err error
+	enc := gob.NewEncoder(w)
 	i := 0
 	for _, v := range val {
 		i++
 		if err = enc.Encode(v); err != nil {
-			return nil, fmt.Errorf("encode error at %d/%d, error: %s", i, len(val), err)
+			return fmt.Errorf("encode error at %d/%d, error: %s", i, len(val), err)
 		}
 	}
-	return buf.Bytes(), nil
+	return nil
 }
 
 func GobEncodeToFile(fn, val ...interface{}) error {
@@ -26,6 +35,10 @@ func GobEncodeToFile(fn, val ...interface{}) error {
 	if err != nil {
 		return err
 	}
+	if err = GobEncodeTo(f, val); err != nil {
+		return err
+	}
+	return nil
 }
 
 func GobDecode(data []byte, val ...interface{}) (err error) {
