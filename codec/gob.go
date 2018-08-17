@@ -30,7 +30,7 @@ func GobEncodeTo(w io.Writer, val ...interface{}) error {
 	return nil
 }
 
-func GobEncodeToFile(fn, val ...interface{}) error {
+func GobEncodeToFile(fn string, val ...interface{}) error {
 	f, err := os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
 	if err != nil {
 		return err
