@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"bitbucket.org/wseternal/helper/logger"
 	"io/ioutil"
 	"math"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"bitbucket.org/wseternal/helper/logger"
 )
 
 type Request struct {
@@ -54,6 +55,16 @@ func (resp *Response) String() string {
 
 func (req *Request) UnmarshalFrom(data []byte) error {
 	return json.Unmarshal(data, req)
+}
+
+func (req *Request) CreateResponse() *Response {
+	res := &Response{
+		JsonRpc: RPCVersion,
+	}
+	if req.ID != nil {
+		res.ID = *req.ID
+	}
+	return res
 }
 
 func HttpRequest(url, method string, params interface{}, resUnmarshal interface{}) (res *Response, err error) {
