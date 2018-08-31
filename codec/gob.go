@@ -42,11 +42,15 @@ func GobEncodeToFile(fn string, val ...interface{}) error {
 }
 
 func GobDecode(data []byte, val ...interface{}) (err error) {
-	enc := gob.NewDecoder(bytes.NewReader(data))
+	return GobDecodeFrom(bytes.NewReader(data), val)
+}
+
+func GobDecodeFrom(r io.Reader, val ...interface{}) (err error) {
+	dec := gob.NewDecoder(r)
 	i := 0
 	for _, v := range val {
 		i++
-		if err = enc.Decode(v); err != nil {
+		if err = dec.Decode(v); err != nil {
 			return fmt.Errorf("decode error at %d/%d, error: %s", i, len(val), err)
 		}
 	}
