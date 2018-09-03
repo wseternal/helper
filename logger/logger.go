@@ -9,6 +9,10 @@ import (
 	"runtime"
 )
 
+// Filter process every log message, return true if continue the logging, otherwise,
+// return false to drop the message
+type Filter func(level LogLevel, format string, v ...interface{}) bool
+
 type LogLevel int
 
 const (
@@ -40,6 +44,7 @@ var (
 	logLevel      LogLevel = INFO
 	discardLogger          = log.New(ioutil.Discard, "Discard: ", 0)
 	loggers       []*log.Logger
+	filters       map[string]Filter
 )
 
 func init() {
@@ -51,9 +56,21 @@ func init() {
 			loggers[i] = log.New(os.Stderr, fmt.Sprintf("%s: ", LogLevelString[i]), 0)
 		}
 	}
+	filters = make(map[string]Filter, 0)
+}
+
+func RegisterFilter(name string, f Filter) {
+	filters[name] = f
 }
 
 func Log(level LogLevel, format string, v ...interface{}) {
+	if len(filters) > 0 {
+		for _, f := range filters {
+			if !f(level, format, v...) {
+				return
+			}
+		}
+	}
 	if level <= logLevel {
 		if level <= ERROR {
 			log := loggers[level]
@@ -98,6 +115,16 @@ func LogW(format string, v ...interface{}) {
 		return
 	}
 	Log(WARNING, format, v...)
+}
+
+// Caller skip 0: the func calling this helper function
+// 1: parent of the func calling this helper function, etc...
+func Caller(skip int) string {
+	if _, f, l, ok := runtime.Caller(skip); ok {
+		return fmt.Sprintf("%s:%d", f, l)
+	} else {
+		return ""
+	}
 }
 
 func Panicf(format string, v ...interface{}) {
