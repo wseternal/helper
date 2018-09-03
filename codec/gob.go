@@ -35,14 +35,14 @@ func GobEncodeToFile(fn string, val ...interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err = GobEncodeTo(f, val); err != nil {
+	if err = GobEncodeTo(f, val...); err != nil {
 		return err
 	}
 	return nil
 }
 
 func GobDecode(data []byte, val ...interface{}) (err error) {
-	return GobDecodeFrom(bytes.NewReader(data), val)
+	return GobDecodeFrom(bytes.NewReader(data), val...)
 }
 
 func GobDecodeFrom(r io.Reader, val ...interface{}) (err error) {
