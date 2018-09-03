@@ -124,7 +124,7 @@ func signalCaptureThread() {
 		select {
 		case s := <-sigChan:
 			sig, _ := s.(syscall.Signal)
-			logger.LogI("invoking signal actions (%d registered) for %s\n", len(sigActions[sig].Funcs), s.String())
+			logger.LogI("invoking actions for signal %d (%s) for %d subscribers\n", sig, s.String(), len(sigActions[sig].Funcs))
 			for _, f := range sigActions[sig].Funcs {
 				f()
 			}
