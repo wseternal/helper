@@ -120,7 +120,7 @@ func LogW(format string, v ...interface{}) {
 // Caller skip 0: the func calling this helper function
 // 1: parent of the func calling this helper function, etc...
 func Caller(skip int) string {
-	if _, f, l, ok := runtime.Caller(skip); ok {
+	if _, f, l, ok := runtime.Caller(1 + skip); ok {
 		return fmt.Sprintf("%s:%d", f, l)
 	} else {
 		return ""
