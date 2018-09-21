@@ -28,6 +28,18 @@ var (
 	sigChan       chan os.Signal
 )
 
+// 2006-01-02 15:04:05"
+const (
+	YYYY     = "2006"
+	MM       = "01"
+	DD       = "02"
+	H        = "03"
+	M        = "04"
+	S        = "05"
+	HH_M_S   = "15:04:05"
+	H_M_S_PM = "03:04:05 PM"
+)
+
 func init() {
 	l = log.New(os.Stderr, "", log.Ldate|log.Ltime)
 }

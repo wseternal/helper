@@ -3,8 +3,8 @@ package pump
 import (
 	"fmt"
 	"io"
+	"sync"
 
-	"bitbucket.org/wseternal/helper/iohelper"
 	"bitbucket.org/wseternal/helper/iohelper/sink"
 	"bitbucket.org/wseternal/helper/iohelper/source"
 )
@@ -12,6 +12,21 @@ import (
 var (
 	DEBUG = false
 )
+
+var bufPool = sync.Pool{
+	New: func() interface{} {
+		b := make([]byte, 8192)
+		return &b
+	},
+}
+
+func getBuffer() *[]byte {
+	return bufPool.Get().(*[]byte)
+}
+
+func putBuffer(bufp *[]byte) {
+	bufPool.Put(bufp)
+}
 
 // Step pump data from r to w once
 func Step(r *source.Source, w *sink.Sink, bufp *[]byte) (n int, err error) {
@@ -61,8 +76,8 @@ func Step(r *source.Source, w *sink.Sink, bufp *[]byte) (n int, err error) {
 func All(r *source.Source, w *sink.Sink, closeWhenDone bool) (total int, err error) {
 	var n int
 
-	bufp := iohelper.DefaultGetBuffer()
-	defer iohelper.DefaultPutBuffer(bufp)
+	bufp := getBuffer()
+	defer putBuffer(bufp)
 	for {
 		n, err = Step(r, w, bufp)
 		total += n
