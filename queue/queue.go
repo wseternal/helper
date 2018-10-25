@@ -2,10 +2,11 @@ package queue
 
 import (
 	"fmt"
-	"bitbucket.org/wseternal/helper/logger"
 	"reflect"
 	"sync"
 	"time"
+
+	"bitbucket.org/wseternal/helper/logger"
 )
 
 type Queue struct {
@@ -114,6 +115,7 @@ func (q *Queue) StopFlushThread() {
 	q.Lock()
 	defer q.Unlock()
 
+	// todo release the lock quickly, call the flush with cached elements
 	if q.f != nil {
 		q.flushQueue()
 		q.abortChan <- struct{}{}
