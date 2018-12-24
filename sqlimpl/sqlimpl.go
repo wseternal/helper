@@ -21,6 +21,10 @@ type SQLImpl struct {
 	DSN    string
 }
 
+const (
+	DriverlMysql = "mysql"
+)
+
 // ConnectDB connect to specific database using given driver and dsn
 // dns is in format: username:password@protocol(address)/dbname,
 // e.g.: username:password@tcp(127.0.0.1:3306)/testdb
@@ -51,6 +55,27 @@ func init() {
 
 func (impl *SQLImpl) Close() error {
 	return impl.DB.Close()
+}
+
+func (impl *SQLImpl) GetTable(name string) (*DataTable, error) {
+	query := fmt.Sprintf("SHOW CREATE TABLE %s", name)
+
+	stmt, err := impl.DB.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	var tmp, create string
+	if err = stmt.QueryRow().Scan(&tmp, &create); err != nil {
+		return nil, err
+	}
+
+	return &DataTable{
+		Name: name,
+		CreateStatement: create,
+		impl: impl,
+	}, nil
 }
 
 // InitTables initialize the tables

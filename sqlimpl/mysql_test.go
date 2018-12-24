@@ -27,7 +27,7 @@ var (
 func TestDataTableActions(t *testing.T) {
 	impl, err := ConnectDB("mysql", dsn)
 	if err != nil {
-		t.Fatalf("connect to db %s failed, error: %s\n", err)
+		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
 	}
 	defer impl.Close()
 
@@ -62,4 +62,17 @@ func TestDataTableActions(t *testing.T) {
 		}
 		fmt.Printf("res is %#v\n", res)
 	}
+}
+
+func TestGetTable(t *testing.T) {
+	dsn = "root:weixiaoxin123@tcp(121.42.157.74:3316)/wifiadx"
+	impl, err := ConnectDB("mysql", dsn)
+	if err != nil {
+		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
+	}
+	defer impl.Close()
+
+	var dt *DataTable
+	dt, err = impl.GetTable("wifi_ch_userinfo")
+	fmt.Printf("%v %v\n", dt, err)
 }
