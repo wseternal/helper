@@ -3,6 +3,7 @@ package codec
 import (
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -28,4 +29,13 @@ func XmlUnmarshalFromFile(fn string, val interface{}) error {
 		return err
 	}
 	return xml.Unmarshal(data, val)
+}
+
+// JsonMarhsal return {"error":"err returned by json.Marhsal"} on error
+func JsonMarshal(i interface{}) string {
+	out, err := json.Marshal(i)
+	if err != nil {
+		return fmt.Sprintf(`{"error":"%s"}`, err)
+	}
+	return string(out)
 }

@@ -1,93 +1,204 @@
 package main
 
 import (
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/logger"
+	"bitbucket.org/wseternal/helper/codec"
 	"bitbucket.org/wseternal/helper/redisw"
-	"bitbucket.org/wseternal/helper/sqlimpl"
 	"fmt"
-	"reflect"
-	"syscall"
+	"github.com/go-redis/redis"
 )
 
-
-type ch_record struct {
-	ID int64 `sql:"id"`
-	AcMac string `sql:"acmac"`
-	ShopID int64 `sql:"shop_id"`
-	WID int64 `sql:"wid"`
-	UserID int64 `sql:"user_id"`
-	UPHID string `sql:"uphid"`
-	SceneStr string `sql:"scene_str"`
-	AppID string `sql:"appid"`
-	OpenID string `sql:"OpenID"`
-	UnionID string `sql:"unionid"`
-	Province string `sql:"province"`
-	City string `sql:"City"`
-	Country string `sql:"Country"`
-	Height float32 `sql:"height"`
-	Weight float32 `sql:"weight"`
-	Bmi float32 `sql:"bmi"`
-	Os int8 `sql:"os"`
-	UA string `sql:"ua"`
-	Gender int8 `sql:"gender"`
-	Subscribe int8 `sql:"subscribe"`
-	SubTime int64 `sql:"sub_time"`
-	IsOtherChan int8 `sql:"is_otherchan"`
-	IsSomeDevice int8 `sql:"is_somedevice"`
-	OrderID int64 `sql:"order_id"`
-	Stp int8 `sql:"stp"`
-	VerifiCode string `sql:"verifi_code"`
-	AuthlistSrc int8 `sql:"authlist_src"`
-	ScaleTime int64 `sql:"scale_time"`
-	AddTime int64 `sql:"add_time"`
-	UpdateTime int64 `sql:"update_time"`
-	AddDate string `sql:"add_date"`
-	MarketType string `sql:"markettype"`
-	IsDeal int8 `sql:"is_deal"`
+type MeasureResult struct {
+	Weight float32 `json:"weight"`
+	Height float32 `json:"height"`
+	Bmi float32 `json:"bmi"`
+	Scale string `json:"scale"`
+	Timestamp int64 `json:"ts"`
 }
 
-var (
-	abortProcess = false
-	idProcessed int64 = 0
-)
-const (
-	ProcessedID = "ch_records_processed"
-)
-
-func main() {
-	my, err := sqlimpl.ConnectDB(sqlimpl.DriverlMysql, `root:weixiaoxin123@tcp(121.42.157.74:3316)/wifiadx`)
-	if err != nil {
-		logger.Panicf("open db failed, %s\n", err)
-	}
-	defer my.Close()
-
-	var dtRecords *sqlimpl.DataTable
-	dtRecords, err = my.GetTable("wifi_ch_records")
-	if err != nil {
-		logger.Panicf("get wifi_ch_records table failed, %s\n", err)
-	}
-
-	redis, err := redisw.NewClient(nil)
-	if err != nil {
-		logger.Panicf("failed to connect redis, %s\n", err)
-	}
-
-	idProcessed = redis.GetInt64(ProcessedID, 0, nil)
-	fmt.Printf("current processed %d\n", idProcessed)
-
-	helper.OnSignal(onSigTerm, syscall.SIGTERM)
-
-	if err = dtRecords.StructScan("order by id asc limit 3", reflect.TypeOf(ch_record{}), onRow); err != nil {
-		fmt.Printf("struct scan failed, %s\n", err)
-	}
-	fmt.Printf("terminate current processing... now, processed to No.%d record\n", idProcessed)
+type FollowDetail struct {
+	UnionID string `json:"unionid"`
+	AppID string `json:"appid"`
+	OpenID string `json:"openid"`
 }
 
-func onRow(val interface{}) {
-	fmt.Printf("onrow: %+v\n", val)
+func addUnfollow(c *redisw.Client, unionid, appid string, tsUnfollow int64) error {
+	var key string
+	var err error
+
+	key = fmt.Sprintf("unfollow:user:%s", unionid)
+
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsUnfollow),
+		Member: codec.JsonMarshal(struct {
+			AppID string `json:"appid"`
+			Timestamp int64 `json:"ts"`
+		} {
+			AppID:appid,
+			Timestamp: tsUnfollow,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = "unfollow:all"
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsUnfollow),
+		Member: codec.JsonMarshal(struct {
+			UnionID string `json:"unionid"`
+			AppID string `json:"appid"`
+			Timestamp int64 `json:"ts"`
+		} {
+			UnionID: unionid,
+			AppID:appid,
+			Timestamp: tsUnfollow,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func onSigTerm() {
-	abortProcess = true
+func addFollow(c *redisw.Client, scale, unionid, appid, openid string, tsFollow int64) error {
+	var key string
+	var err error
+
+	key = "follow:all"
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsFollow),
+		Member: codec.JsonMarshal(struct {
+			Scale string `json:"scale"`
+			UnionID string `json:"unionid"`
+			AppID string `json:"appid"`
+			Timestamp int64 `json:"ts"`
+		} {
+			Scale: scale,
+			UnionID: unionid,
+			AppID:appid,
+			Timestamp: tsFollow,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = "followset:all"
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsFollow),
+		Member: codec.JsonMarshal(struct {
+			UnionID string `json:"unionid"`
+			AppID string `json:"appid"`
+		} {
+			UnionID: unionid,
+			AppID: appid,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("follow:user:%s", unionid)
+
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsFollow),
+		Member: codec.JsonMarshal(struct {
+			Scale string `json:"scale"`
+			AppID string `json:"appid"`
+			Timestamp int64 `json:"ts"`
+		} {
+			Scale: scale,
+			AppID:appid,
+			Timestamp: tsFollow,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("openid:user:%s", unionid)
+
+	if err = c.HSet(key, appid, openid).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("followset:user:%s", unionid)
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsFollow),
+		Member: appid,
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("followset:appid:%s", appid)
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsFollow),
+		Member: unionid,
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("followset:scale:%s", scale)
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsFollow),
+		Member: codec.JsonMarshal(struct {
+			UnionID string `json:"unionid"`
+			AppID string `json:"appid"`
+		} {
+			UnionID: unionid,
+			AppID: appid,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
+func addUserMeasureResult(c *redisw.Client, unionid string, r *MeasureResult) error {
+	key := fmt.Sprintf("measure:user:%s", unionid)
+	var err error
+
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(r.Timestamp),
+		Member: codec.JsonMarshal(r),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("measure:scale:%s", r.Scale)
+	var mres = struct {
+		UnionID string `json:"unionid"`
+		Timestamp int64 `json:"ts"`
+	} {
+		UnionID: unionid,
+		Timestamp: r.Timestamp,
+	}
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(r.Timestamp),
+		Member: codec.JsonMarshal(mres),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = "measure:all"
+	var ares = struct {
+		Scale string `json:"scale"`
+		Timestamp int64 `json:"ts"`
+	}  {
+		Scale: r.Scale,
+		Timestamp: r.Timestamp,
+	}
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(r.Timestamp),
+		Member: codec.JsonMarshal(ares),
+	}).Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func IsPublicAccount(id string) bool {
+	if len(id) == 18 && id[0:2] == "wx" {
+		return true
+	}
+	return false
 }
