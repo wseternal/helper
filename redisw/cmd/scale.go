@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/wseternal/helper/redisw"
 	"fmt"
 	"github.com/go-redis/redis"
+	"time"
 )
 
 type MeasureResult struct {
@@ -141,9 +142,13 @@ func addFollow(c *redisw.Client, scale, unionid, appid, openid string, tsFollow 
 		Member: codec.JsonMarshal(struct {
 			UnionID string `json:"unionid"`
 			AppID string `json:"appid"`
+			//SubDate (in form 2018-01-01) is used for de-dulication, the same unionid cloud follow the same appid
+			// with an interval of one day.
+			SubDate string `json:"sub_date"`
 		} {
 			UnionID: unionid,
 			AppID: appid,
+			SubDate: time.Unix(tsFollow, 0).Format("2006-01-02"),
 		}),
 	}).Err(); err != nil {
 		return err
