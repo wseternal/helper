@@ -62,7 +62,6 @@ var (
 
 const (
 	ProcessedID = "ch_records_processed"
-	TS20180101 = 1514736000
 )
 
 func main() {
@@ -143,15 +142,13 @@ func (r *ch_record) migrateToRedis(c *redisw.Client) error {
 	if err = r.sanityCheck(); err != nil {
 		return err
 	}
-	if r.ScaleTime < TS20180101 {
-		r.ScaleTime = r.AddTime
-	}
 	if err = addUserMeasureResult(c, r.UnionID, &MeasureResult{
-		Weight: r.Weight,
-		Height: r.Height,
-		Bmi: r.Bmi,
-		Scale: r.AcMac,
-		Timestamp: r.ScaleTime,
+		Weight:    r.Weight,
+		Height:    r.Height,
+		Bmi:       r.Bmi,
+		Scale:     r.AcMac,
+		ScaleTime: r.ScaleTime,
+		AddTime:   r.AddTime,
 	}); err != nil {
 		return err
 	}

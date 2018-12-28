@@ -8,11 +8,12 @@ import (
 )
 
 type MeasureResult struct {
-	Weight float32 `json:"weight"`
-	Height float32 `json:"height"`
-	Bmi float32 `json:"bmi"`
-	Scale string `json:"scale"`
-	Timestamp int64 `json:"ts"`
+	Weight    float32 `json:"weight"`
+	Height    float32 `json:"height"`
+	Bmi       float32 `json:"bmi"`
+	Scale     string  `json:"scale"`
+	ScaleTime int64   `json:"scale_ts"`
+	AddTime   int64   `json:"add_ts"`
 }
 
 type FollowDetail struct {
@@ -157,7 +158,7 @@ func addUserMeasureResult(c *redisw.Client, unionid string, r *MeasureResult) er
 	var err error
 
 	if err = c.ZAdd(key, redis.Z{
-		Score: float64(r.Timestamp),
+		Score: float64(r.AddTime),
 		Member: codec.JsonMarshal(r),
 	}).Err(); err != nil {
 		return err
@@ -169,10 +170,10 @@ func addUserMeasureResult(c *redisw.Client, unionid string, r *MeasureResult) er
 		Timestamp int64 `json:"ts"`
 	} {
 		UnionID: unionid,
-		Timestamp: r.Timestamp,
+		Timestamp: r.AddTime,
 	}
 	if err = c.ZAdd(key, redis.Z{
-		Score: float64(r.Timestamp),
+		Score: float64(r.AddTime),
 		Member: codec.JsonMarshal(mres),
 	}).Err(); err != nil {
 		return err
@@ -184,10 +185,10 @@ func addUserMeasureResult(c *redisw.Client, unionid string, r *MeasureResult) er
 		Timestamp int64 `json:"ts"`
 	}  {
 		Scale: r.Scale,
-		Timestamp: r.Timestamp,
+		Timestamp: r.AddTime,
 	}
 	if err = c.ZAdd(key, redis.Z{
-		Score: float64(r.Timestamp),
+		Score: float64(r.AddTime),
 		Member: codec.JsonMarshal(ares),
 	}).Err(); err != nil {
 		return err
