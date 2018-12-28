@@ -62,6 +62,7 @@ var (
 
 const (
 	ProcessedID = "ch_records_processed"
+	TS20180101 = 1514736000
 )
 
 func main() {
@@ -108,7 +109,7 @@ func onRow(val interface{}) {
 	var err error
 	if err = record.migrateToRedis(redisInst); err != nil {
 		fmt.Fprintf(os.Stderr, "migriate %+v to redis failed, %s\n", *record, err)
-		cancel()
+		// cancel()
 		return
 	}
 }
@@ -142,7 +143,7 @@ func (r *ch_record) migrateToRedis(c *redisw.Client) error {
 	if err = r.sanityCheck(); err != nil {
 		return err
 	}
-	if r.ScaleTime == 0 {
+	if r.ScaleTime < TS20180101 {
 		r.ScaleTime = r.AddTime
 	}
 	if err = addUserMeasureResult(c, r.UnionID, &MeasureResult{
