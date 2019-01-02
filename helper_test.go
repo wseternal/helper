@@ -29,3 +29,7 @@ func TestSameSliceBackend(t *testing.T) {
 	fmt.Printf("bk[:0] bk2 the same backend: %v\n", SameSliceBackend(s2, bk2))
 	fmt.Printf("bk[:0] bk2 the same backend: %v\n", SameSliceBackend(s2, bk2))
 }
+
+func TestUnixDate(t *testing.T) {
+	fmt.Printf("unix timestamp of tody: %d\n", UnixDate(0))
+}

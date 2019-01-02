@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"path/filepath"
 
@@ -194,4 +195,12 @@ func GetDirectorySize(dir string) (size int64, err error) {
 		return nil
 	})
 	return size, err
+}
+
+// UnixDate return unix timestamp of 00:00:00 day with given offset
+// 0: 00:00:00 of today, -1 00:00:00 of yesterday,  1: 00:00:00 tomorrow
+func UnixDate(offDay int) int64 {
+	now := time.Now()
+	y, m, d := now.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix() + int64(offDay * 86400)
 }
