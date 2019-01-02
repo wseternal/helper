@@ -27,21 +27,6 @@ func addUnfollow(c *redisw.Client, unionid, appid string, tsUnfollow int64) erro
 	var key string
 	var err error
 
-	key = fmt.Sprintf("unfollow:user:%s", unionid)
-
-	if err = c.ZAdd(key, redis.Z{
-		Score: float64(tsUnfollow),
-		Member: codec.JsonMarshal(struct {
-			AppID string `json:"appid"`
-			Timestamp int64 `json:"ts"`
-		} {
-			AppID:appid,
-			Timestamp: tsUnfollow,
-		}),
-	}).Err(); err != nil {
-		return err
-	}
-
 	key = "unfollow:all"
 	if err = c.ZAdd(key, redis.Z{
 		Score: float64(tsUnfollow),
@@ -58,6 +43,24 @@ func addUnfollow(c *redisw.Client, unionid, appid string, tsUnfollow int64) erro
 		return err
 	}
 
+	key = fmt.Sprintf("unfollow:user:%s", unionid)
+	if err = c.ZAdd(key, redis.Z{
+		Score: float64(tsUnfollow),
+		Member: codec.JsonMarshal(struct {
+			AppID string `json:"appid"`
+			Timestamp int64 `json:"ts"`
+		} {
+			AppID:appid,
+			Timestamp: tsUnfollow,
+		}),
+	}).Err(); err != nil {
+		return err
+	}
+
+	key = fmt.Sprintf("followset:user:%s", unionid)
+	if err = c.ZRem(key, appid).Err(); err != nil {
+		return err
+	}
 	return nil
 }
 
