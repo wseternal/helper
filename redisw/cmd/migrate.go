@@ -6,6 +6,7 @@ import (
 	"bitbucket.org/wseternal/helper/redisw"
 	"bitbucket.org/wseternal/helper/sqlimpl"
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"reflect"
@@ -58,14 +59,23 @@ var (
 	redisInst    *redisw.Client
 
 	processed int64
+
+	mysqlDsn string
+	redisAddr string
 )
 
 const (
 	ProcessedID = "ch_records_processed"
 )
 
+func init() {
+	flag.StringVar(&mysqlDsn, "m", `root:weixiaoxin123@tcp(121.42.157.74:3316)/wifiadx`, "mysql data source name, in format user:passwd@tcp(host:port)/db")
+	flag.StringVar(&redisAddr, "r", "127.0.0.1:6379", "redis server address")
+}
+
 func main() {
-	my, err := sqlimpl.ConnectDB(sqlimpl.DriverlMysql, `root:weixiaoxin123@tcp(121.42.157.74:3316)/wifiadx`)
+	flag.Parse()
+	my, err := sqlimpl.ConnectDB(sqlimpl.DriverlMysql, mysqlDsn)
 	if err != nil {
 		logger.Panicf("open db failed, %s\n", err)
 	}
@@ -77,7 +87,9 @@ func main() {
 		logger.Panicf("get wifi_ch_records table failed, %s\n", err)
 	}
 
-	redisInst, err = redisw.NewClient(nil)
+	opt := *redisw.DefaultOption
+	opt.Addr = redisAddr
+	redisInst, err = redisw.NewClient(&opt)
 	if err != nil {
 		logger.Panicf("failed to connect redis, %s\n", err)
 	}
