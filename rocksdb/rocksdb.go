@@ -59,7 +59,7 @@ type RangeOption struct {
 	Key              string
 	CF               string
 	Limit            int64
-	// output each object per-line
+	// output each object per-line, it's set when output parameter is specified
 	streamOutput bool
 
 	// range option could be terminated if
@@ -95,6 +95,9 @@ const (
 	DefaultWriteBufferSize  = 64 << 20
 	DefaultBlockCacheSize   = 128 << 20
 	DefaultBloomFilterBit   = 10
+	TinyWriteBufferSize    = DefaultWriteBufferSize >> 4
+	TinyBlockCacheSize     = DefaultBlockCacheSize >> 4
+
 	DefaultColumnFamilyName = "default"
 
 	// please refer to struct Properties in include/rocksdb/db.H
@@ -117,7 +120,9 @@ const (
 )
 
 func init() {
-	DefaultWriteOption.DisableWAL(true)
+	DefaultWriteOption.DisableWAL(false)
+	DefaultWriteOption.SetSync(false)
+	DefaultFlushOption.SetWait(true)
 }
 
 func NewRangeOption() *RangeOption {
@@ -127,6 +132,10 @@ func NewRangeOption() *RangeOption {
 		TSFieldIndex: 1,
 		KeySeparator: ",",
 	}
+}
+
+func (opt *RangeOption) Abort() {
+	opt.abort = true
 }
 
 func (opt *RangeOption) taskDone() {

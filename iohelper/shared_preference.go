@@ -57,6 +57,10 @@ func (sp *SharedPreference) FromFile(fn string) error {
 	if err != nil {
 		return err
 	}
+	if len(data) == 0 {
+		fmt.Fprintf(os.Stderr, "SharedPreference FromFile: skip empty file: %s\n", fn)
+		return nil
+	}
 	return xml.Unmarshal(data, sp)
 }
 

@@ -92,6 +92,17 @@ func IsFile(path string) bool {
 	return ret
 }
 
+func FileSize(path string) (int64, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	if stat.IsDir() {
+		return 0, fmt.Errorf("%s is a directory", path)
+	}
+	return stat.Size(), nil
+}
+
 func testFileMode(path string, m os.FileMode, followSymlink bool) (bool, error) {
 	var finfo os.FileInfo
 	var err error
