@@ -11,6 +11,7 @@ import (
 
 // StructScan scan sql row into destVal, which must be an valid pointer to a struct
 // the columns selected from the data table will be deduce from the all the fields of destVal
+// Pay Attention: destVal of onRow is reused, you must deep copy that variable if you need store it
 func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, destValType reflect.Type, onRow func(destVal interface{})) error {
 	if destValType.Kind() != reflect.Struct {
 		return fmt.Errorf("invalid destValType %v, require struct", destValType)
@@ -20,10 +21,8 @@ func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, dest
 		return errors.New("no fields found for destVal struct object")
 	}
 
-	cnt := destValType.NumField()
-
-	fieldNames := make([]string, cnt)
-	valPtrs := make([]interface{}, cnt)
+	fieldNames := make([]string, 0)
+	valPtrs := make([]interface{}, 0)
 	var fn string
 	var tmp reflect.StructField
 
@@ -32,14 +31,18 @@ func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, dest
 
 	for i := 0; i < destValType.NumField(); i++ {
 		tmp = destValType.Field(i)
-		fieldNames[i] = tmp.Name
+		name := tmp.Name
 		if len(tmp.Tag) > 0 {
 			fn = strings.SplitN(tmp.Tag.Get("sql"), ",", 2)[0]
 			if len(fn) > 0 {
-				fieldNames[i] = fn
+				if fn == "-" {
+					continue
+				}
+				name = fn
 			}
 		}
-		valPtrs[i] = v.Elem().Field(i).Addr().Interface()
+		fieldNames = append(fieldNames, name)
+		valPtrs = append(valPtrs, v.Elem().Field(i).Addr().Interface())
 	}
 
 	query := fmt.Sprintf("select %s from %s %s", strings.Join(fieldNames, ","), dt.Name, condOrderLimit)
