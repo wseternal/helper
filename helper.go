@@ -215,3 +215,33 @@ func UnixDate(offDay int) int64 {
 	y, m, d := now.Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix() + int64(offDay * 86400)
 }
+
+// zoneOff: timezone offset, postive for east, negative for west, 0 for UTC
+// e.g.: +8 for CST
+func UnixDateWithZone(offDay int, zoneOff int8) int64 {
+	_, off := time.Now().Zone()
+	return UnixDate(offDay) + int64(zoneOff)*3600 - int64(off)
+}
+
+// valid whether t is a valid struct type, dereference: the dereference depth
+// if t is a pointer, if < 0: infinite dereference; if >= 0: only deference given times
+func ValidStructType(t reflect.Type, dereference int) error {
+	tmp := t
+	count := dereference
+	for {
+		switch(tmp.Kind()) {
+		case reflect.Ptr:
+			if count == 0 {
+				return fmt.Errorf("%v(%s) is not a valid struct type after dereference given %d times", t, tmp.Kind(), dereference)
+			}
+			if count > 0 {
+				count--
+			}
+			tmp = tmp.Elem()
+		case reflect.Struct:
+			return nil
+		default:
+			return fmt.Errorf("%v is not a valid struct type, it's underline type is: %s", t, tmp.Kind())
+		}
+	}
+}

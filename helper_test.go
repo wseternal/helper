@@ -3,7 +3,9 @@ package helper
 import (
 	"flag"
 	"fmt"
+	"reflect"
 	"testing"
+	"time"
 )
 
 var fn string
@@ -31,5 +33,20 @@ func TestSameSliceBackend(t *testing.T) {
 }
 
 func TestUnixDate(t *testing.T) {
-	fmt.Printf("unix timestamp of tody: %d\n", UnixDate(0))
+	zone, off := time.Now().Zone()
+	fmt.Printf("unix timestamp of tody: %d, in zone: %s, zoneoff: %d\n", UnixDate(0), zone, off)
+	fmt.Printf("unix timestamp of today of zone 4: %d\n", UnixDateWithZone(0, +4))
+}
+
+func TestValidStructType(t *testing.T) {
+	var a struct {
+		name string
+	}
+	b := &a
+	c := &b
+	d := &c
+	err := ValidStructType(reflect.TypeOf(d), 1)
+	if err != nil {
+		t.Fatalf("%s\n", err)
+	}
 }
