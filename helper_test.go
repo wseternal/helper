@@ -38,14 +38,33 @@ func TestUnixDate(t *testing.T) {
 	fmt.Printf("unix timestamp of today of zone 4: %d\n", UnixDateWithZone(0, +4))
 }
 
+type TT struct {
+	Name string
+}
+
 func TestValidStructType(t *testing.T) {
-	var a struct {
-		name string
+	a := TT {
+		Name: "123",
 	}
+
 	b := &a
 	c := &b
 	d := &c
-	err := ValidStructType(reflect.TypeOf(d), 1)
+
+	err := ValidStructType(b, reflect.TypeOf(TT{}), 1)
+	if err != nil {
+		t.Logf("%s\n", err)
+	}
+
+	err = ValidStructType(b, reflect.TypeOf(TT{}), 1)
+	if err != nil {
+		t.Logf("%s\n", err)
+	}
+	err = ValidStructType(c, reflect.TypeOf(TT{}), 2)
+	if err != nil {
+		t.Logf("%s\n", err)
+	}
+	err = ValidStructType(d, reflect.TypeOf(TT{}), 2)
 	if err != nil {
 		t.Fatalf("%s\n", err)
 	}

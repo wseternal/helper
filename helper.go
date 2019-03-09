@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -223,25 +224,40 @@ func UnixDateWithZone(offDay int, zoneOff int8) int64 {
 	return UnixDate(offDay) + int64(zoneOff)*3600 - int64(off)
 }
 
-// valid whether t is a valid struct type, dereference: the dereference depth
+// valid whether obj is in given struct type, dereference: the dereference depth
 // if t is a pointer, if < 0: infinite dereference; if >= 0: only deference given times
-func ValidStructType(t reflect.Type, dereference int) error {
-	tmp := t
+// if expected is nil, only check whether obj is a struct
+func ValidStructType(obj interface{}, expected reflect.Type, dereference int) error {
+	if obj == nil {
+		return errors.New("nil object")
+	}
+	if expected != nil && expected.Kind() != reflect.Struct {
+		return errors.New("parameter 'expected' must be a valid struct type")
+	}
+	tmp := reflect.TypeOf(obj)
 	count := dereference
 	for {
 		switch(tmp.Kind()) {
 		case reflect.Ptr:
 			if count == 0 {
-				return fmt.Errorf("%v(%s) is not a valid struct type after dereference given %d times", t, tmp.Kind(), dereference)
+				return fmt.Errorf("%v(%[1]T) is not a valid struct type after dereference given %d times", obj, dereference)
 			}
 			if count > 0 {
 				count--
 			}
 			tmp = tmp.Elem()
 		case reflect.Struct:
-			return nil
+			if expected == nil {
+				return nil
+			} else {
+				if expected == tmp {
+					return nil
+				}
+				return fmt.Errorf("obj is in type: %s, not equal to expected: %s", tmp, expected)
+			}
 		default:
-			return fmt.Errorf("%v is not a valid struct type, it's underline type is: %s", t, tmp.Kind())
+			return fmt.Errorf("%v is not a valid struct type, it's underline type is: %s", obj, tmp.Kind())
 		}
 	}
 }
+
