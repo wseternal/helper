@@ -33,13 +33,14 @@ func (c *APIContext) Get(key string) interface{} {
 	return m.elems[key]
 }
 
-func NewAPIContext() *APIContext {
+func NewAPIContext(ctx context.Context) *APIContext {
 	m := &apiContextValue{
 		elems:make(map[string]interface{}),
 	}
-	ctx := context.WithValue(context.Background(), apiContextKey, m)
-
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	return &APIContext{
-		Context: ctx,
+		Context: context.WithValue(ctx, apiContextKey, m),
 	}
 }

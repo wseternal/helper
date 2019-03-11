@@ -118,6 +118,7 @@ func (api *API) Do(ctx *APIContext) (interface{}, error){
 	if req, err = api.ReqF(ctx); err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx.Context)
 
 	t1 := time.Now()
 	if res, err = client.Do(req); err != nil {
