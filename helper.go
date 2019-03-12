@@ -157,6 +157,35 @@ func signalCaptureThread() {
 	}
 }
 
+// kill terminate signal to current process/group, wait given time ,
+// if process is not quit, send kill signal
+func Terminate(t time.Duration) {
+	// reset SIGTERM handler to default
+	signal.Reset(syscall.SIGTERM)
+	signal.Reset(syscall.SIGINT)
+
+	var err error
+	pid := syscall.Getpid()
+	// send TERM to process group and current process to exit
+	if err = syscall.Kill(-pid, syscall.SIGTERM); err != nil {
+		fmt.Fprintf(os.Stderr, "send SIGTERM to -%d failed, %s\n", pid, err)
+	}
+	if err = syscall.Kill(pid, syscall.SIGTERM); err != nil {
+		fmt.Fprintf(os.Stderr, "send SIGTERM to %d failed, %s\n", pid, err)
+	}
+
+	time.Sleep(t)
+	fmt.Fprintf(os.Stderr, "wait too long (%s) for application (%d) exit, kill it", t.String(), pid)
+
+	if err = syscall.Kill(-pid, syscall.SIGKILL); err != nil {
+		fmt.Fprintf(os.Stderr, "send SIGKILL to -%d failed, %s\n", pid, err)
+	}
+	if err = syscall.Kill(pid, syscall.SIGKILL); err != nil {
+		fmt.Fprintf(os.Stderr, "send SIGKILL to %d failed, %s\n", pid, err)
+	}
+	log.Panicf("OOps, send SIGTERM/SIGKILL to %d failed...\n", pid)
+}
+
 func OnSignal(f func(), sigs ...syscall.Signal) {
 	muxSigActions.Lock()
 	defer muxSigActions.Unlock()
@@ -214,7 +243,7 @@ func GetDirectorySize(dir string) (size int64, err error) {
 func UnixDate(offDay int) int64 {
 	now := time.Now()
 	y, m, d := now.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix() + int64(offDay * 86400)
+	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix() + int64(offDay*86400)
 }
 
 // zoneOff: timezone offset, postive for east, negative for west, 0 for UTC
@@ -237,7 +266,7 @@ func ValidStructType(obj interface{}, expected reflect.Type, dereference int) er
 	tmp := reflect.TypeOf(obj)
 	count := dereference
 	for {
-		switch(tmp.Kind()) {
+		switch tmp.Kind() {
 		case reflect.Ptr:
 			if count == 0 {
 				return fmt.Errorf("%v(%[1]T) is not a valid struct type after dereference given %d times", obj, dereference)
@@ -260,4 +289,3 @@ func ValidStructType(obj interface{}, expected reflect.Type, dereference int) er
 		}
 	}
 }
-
