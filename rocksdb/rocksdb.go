@@ -92,9 +92,9 @@ var (
 )
 
 const (
-	DefaultWriteBufferSize  = 64 << 20
-	DefaultBlockCacheSize   = 128 << 20
-	DefaultBloomFilterBit   = 10
+	DefaultWriteBufferSize = 64 << 20
+	DefaultBlockCacheSize  = 128 << 20
+	DefaultBloomFilterBit  = 10
 	TinyWriteBufferSize    = DefaultWriteBufferSize >> 4
 	TinyBlockCacheSize     = DefaultBlockCacheSize >> 4
 
@@ -121,6 +121,7 @@ const (
 
 func init() {
 	DefaultWriteOption.DisableWAL(false)
+	// set sync to true, if external tool such as ldb need be used to read the data in realtime
 	DefaultWriteOption.SetSync(false)
 	DefaultFlushOption.SetWait(true)
 }
