@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-
 type RequestClient struct {
 	*http.Client
 
@@ -30,23 +29,18 @@ type API struct {
 	RequestObjectType, ResponseObjectType reflect.Type
 	ReqF                                  NewRequestFunc
 	ResCheckF                             ResponseSanityCheckFunc
-	Name string
+	Name                                  string
 }
 
-
-
 const (
-	ErrSystemBusy         = -1
-	ErrAccessTokenExpired = 42001
-
-	ContextKeyReqObj = "__api_req_obj"
+	ContextKeyReqObj    = "__api_req_obj"
 	ContextKeyReqClient = "__api_req_client"
-	ContextKeySpent = "__api_spent"
-	ContextKeyDebug = "__api_debug"
+	ContextKeySpent     = "__api_spent"
+	ContextKeyDebug     = "__api_debug"
 	//following context key will be set if debug
 	ContextKeyDebugLastResData = "__api_debug_last_response_data"
-	ContextKeyDebugLastReq = "__api_debug_last_req"
-	ContextKeyDebugLastAPI = "__api_debug_last_api"
+	ContextKeyDebugLastReq     = "__api_debug_last_req"
+	ContextKeyDebugLastAPI     = "__api_debug_last_api"
 )
 
 var (
@@ -76,11 +70,11 @@ func RegisterAPI(name string, f NewRequestFunc, resCheckF ResponseSanityCheckFun
 		return nil, fmt.Errorf("API name: %s is already registerd", name)
 	} else {
 		apis.elem[name] = &API{
-			Name: name,
-			RequestObjectType: reqType,
+			Name:               name,
+			RequestObjectType:  reqType,
 			ResponseObjectType: responseType,
-			ReqF: f,
-			ResCheckF: resCheckF,
+			ReqF:               f,
+			ResCheckF:          resCheckF,
 		}
 	}
 	return apis.elem[name], nil
@@ -94,8 +88,7 @@ func GetAPI(name string) *API {
 	return apis.elem[name]
 }
 
-
-func (api *API) Do(ctx *APIContext) (interface{}, error){
+func (api *API) Do(ctx *APIContext) (interface{}, error) {
 	var err error
 	// check request object
 	reqObj := ctx.Get(ContextKeyReqObj)
