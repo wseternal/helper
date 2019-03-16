@@ -21,6 +21,9 @@ func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, dest
 		return errors.New("no fields found for destVal struct object")
 	}
 
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	fieldNames := make([]string, 0)
 	valPtrs := make([]interface{}, 0)
 	var fn string

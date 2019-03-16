@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// context with Set/Get for multiple context values
 type APIContext struct {
 	context.Context
 }
