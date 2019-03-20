@@ -151,7 +151,7 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 
 	if api.ResCheckF != nil {
 		if err = api.ResCheckF(ctx, v); err != nil {
-			return nil, fmt.Errorf("sanity check the response failed, %s", err)
+			return nil, fmt.Errorf("%s: sanity check the response failed, %s", api.Name, err)
 		}
 	}
 

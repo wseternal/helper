@@ -246,6 +246,13 @@ func Create(fn string, opts *rocksdb.Options, cfOpts CFOptions) (err error) {
 	return
 }
 
+func setDefault(opts *rocksdb.Options) {
+	opts.SetKeepLogFileNum(1)
+	opts.SetMaxTotalWalSize(128 << 20)
+	opts.SetWALTtlSeconds(60)
+	opts.SetWalSizeLimitMb(8)
+}
+
 func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *rocksdb.Options {
 	// OptimizeForSmallDb func, Use this if your DB is very small (like under 1GB)
 	// OptimizeForPointLookup func,  don't need to keep the data sorted, i.e., you'll never use an iterator.
@@ -291,6 +298,7 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	// it's a verification mode that we use to detect bugs in compression algorithms.
 	// read_amp_bytes_per_bit default 0 (disabled), This number must be a power of 2
 	opts := rocksdb.NewDefaultOptions()
+	setDefault(opts)
 
 	bbto := rocksdb.NewDefaultBlockBasedTableOptions()
 	if bloomFilterBit > 0 {
@@ -401,7 +409,8 @@ func NewDBOptions() *rocksdb.Options {
 	// concurrent_prepare default false, If enabled it uses two queues for writes
 	// manual_wal_flush: default false, If true WAL is not flushed automatically after each write. Instead it relies on manual invocation of FlushWAL to write the WAL buffer to its file.
 	// TODO add dump_malloc_stats
-	opts.SetKeepLogFileNum(1)
+
+	setDefault(opts)
 	return opts
 }
 
