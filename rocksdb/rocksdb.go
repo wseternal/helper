@@ -202,7 +202,7 @@ func (cfOpts CFOptions) GetKVPaire() ([]string, []*rocksdb.Options) {
 
 func (cfOpts CFOptions) AddDefaultCF() {
 	if _, found := cfOpts[DefaultColumnFamilyName]; !found {
-		cfOpts[DefaultColumnFamilyName] = NewCFOptions(DefaultWriteBufferSize, DefaultBlockCacheSize, DefaultBloomFilterBit)
+		cfOpts[DefaultColumnFamilyName] = NewCFOptions(TinyWriteBufferSize, TinyBlockCacheSize, DefaultBloomFilterBit)
 	}
 }
 
