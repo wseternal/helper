@@ -26,6 +26,27 @@ func (c *APIContext) Set(key string, val interface{}) {
 	m.Unlock()
 }
 
+func (c *APIContext) Inc(key string, val int) {
+	m := c.Value(apiContextKey).(*apiContextValue)
+	m.Lock()
+	if _, found := m.elems[key]; found {
+		m.elems[key] = val + m.elems[key].(int)
+	} else {
+		m.elems[key] = val
+	}
+	m.Unlock()
+}
+
+// SetNX: set the key/val only if key is not existed.
+func (c *APIContext) SetNX(key string, val interface{}) {
+	m := c.Value(apiContextKey).(*apiContextValue)
+	m.Lock()
+	if _, found := m.elems[key]; !found {
+		m.elems[key] = val
+	}
+	m.Unlock()
+}
+
 func (c *APIContext) Get(key string) interface{} {
 	m := c.Value(apiContextKey).(*apiContextValue)
 	m.RLock()
