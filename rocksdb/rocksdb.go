@@ -92,11 +92,16 @@ var (
 )
 
 const (
-	DefaultWriteBufferSize = 64 << 20
-	DefaultBlockCacheSize  = 128 << 20
-	DefaultBloomFilterBit  = 10
-	TinyWriteBufferSize    = DefaultWriteBufferSize >> 4
-	TinyBlockCacheSize     = DefaultBlockCacheSize >> 4
+	DefaultBloomFilterBit = 10
+
+	HugeWriteBufferSize = DefaultWriteBufferSize << 2
+	HugeBlockCacheSize  = DefaultBlockCacheSize << 2
+
+	DefaultWriteBufferSize = 32 << 20
+	DefaultBlockCacheSize  = 64 << 20
+
+	TinyWriteBufferSize = DefaultWriteBufferSize >> 2
+	TinyBlockCacheSize  = DefaultBlockCacheSize >> 2
 
 	DefaultColumnFamilyName = "default"
 
@@ -120,7 +125,9 @@ const (
 )
 
 func init() {
-	DefaultWriteOption.DisableWAL(false)
+	// disable Write ahead log by default, it's strangely that lots of
+	// small wal log files (allocated with much more storage) are left on the system.
+	DefaultWriteOption.DisableWAL(true)
 	// set sync to true, if external tool such as ldb need be used to read the data in realtime
 	DefaultWriteOption.SetSync(false)
 	DefaultFlushOption.SetWait(true)

@@ -253,6 +253,15 @@ func UnixDateWithZone(offDay int, zoneOff int8) int64 {
 	return UnixDate(offDay) + int64(zoneOff)*3600 - int64(off)
 }
 
+// check whether local timezone is as expected as given value, e.g.: for china, +8
+func IsTimeZone(zone int) error {
+	z, off := time.Now().Zone()
+	if off == 3600*zone {
+		return nil
+	}
+	return fmt.Errorf("local timezone %s (offset: %d) is not in the expected time zone: %+d", z, off, zone)
+}
+
 // valid whether obj is in given struct type, dereference: the dereference depth
 // if t is a pointer, if < 0: infinite dereference; if >= 0: only deference given times
 // if expected is nil, only check whether obj is a struct
