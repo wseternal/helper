@@ -77,6 +77,8 @@ type RangeOption struct {
 type Iterator = rocksdb.Iterator
 
 type HijackTsInKey func(ts string, key []byte) (newKey []byte, nextKey []byte)
+
+// in RangeFunc, key/value data of iterator shall be deep copied if you want to store them.
 type RangeFunc func(iter *rocksdb.Iterator)
 
 const (
