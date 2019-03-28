@@ -254,7 +254,8 @@ func Create(fn string, opts *rocksdb.Options, cfOpts CFOptions) (err error) {
 }
 
 func setDefault(opts *rocksdb.Options) {
-	opts.SetKeepLogFileNum(3)
+	opts.SetKeepLogFileNum(1)
+	opts.SetInfoLogLevel(rocksdb.WarnInfoLogLevel)
 	opts.SetMaxLogFileSize(128 << 20)
 	opts.SetMaxTotalWalSize(128 << 20)
 	opts.SetWALTtlSeconds(60)
