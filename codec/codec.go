@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 )
 
@@ -38,4 +39,25 @@ func JsonMarshal(i interface{}) string {
 		return fmt.Sprintf(`{"error":"%s"}`, err)
 	}
 	return string(out)
+}
+
+func ToJsonError(err error) string {
+	return fmt.Sprintf(`{"error":"%s"}`, err) + "\n"
+}
+
+func ToJsonResult(val interface{}) string {
+	obj := &struct {
+		Result interface{} `json:"result"`
+	}{
+		Result: val,
+	}
+	return JsonMarshal(obj) + "\n"
+}
+
+func WriteHttpResult(w http.ResponseWriter, res interface{}, err error) {
+	if err == nil {
+		io.WriteString(w, ToJsonResult(res))
+		return
+	}
+	io.WriteString(w, ToJsonError(err))
 }

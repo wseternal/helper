@@ -670,6 +670,7 @@ func NewKVJson(iter *rocksdb.Iterator) *KVJson {
 	}
 }
 
+// RangeForeach enumerate all keys falls in range [startKey, endKey],
 func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) {
 	if oper == nil {
 		logger.LogE("%s\n", "RangeForeach: oper parameter is nil")
@@ -708,6 +709,7 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) {
 	}
 }
 
+// RangeForeachByTS enumerate all entries with the ts field falls in range [startTS, endTS]
 func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFunc) {
 	var cnt int64 = 0
 	var cntNextKeys int64 = 0
