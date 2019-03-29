@@ -1,8 +1,8 @@
 package HttpAPI
 
 import (
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/codec"
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/codec"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"

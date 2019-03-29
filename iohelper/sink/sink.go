@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"bitbucket.org/wseternal/helper/iohelper/filter"
+	"github.com/wseternal/helper/iohelper/filter"
 )
 
 // Sink encapsulates a io.Writer

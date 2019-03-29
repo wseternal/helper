@@ -5,8 +5,8 @@ import (
 	"io"
 	"sync"
 
-	"bitbucket.org/wseternal/helper/iohelper/sink"
-	"bitbucket.org/wseternal/helper/iohelper/source"
+	"github.com/wseternal/helper/iohelper/sink"
+	"github.com/wseternal/helper/iohelper/source"
 )
 
 var (

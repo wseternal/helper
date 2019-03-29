@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"bitbucket.org/wseternal/helper/logger"
+	"github.com/wseternal/helper/logger"
 )
 
 type Request struct {

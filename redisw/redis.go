@@ -2,7 +2,7 @@
 package redisw
 
 import (
-	"bitbucket.org/wseternal/helper"
+	"github.com/wseternal/helper"
 	"fmt"
 	"github.com/go-redis/redis"
 	"strconv"

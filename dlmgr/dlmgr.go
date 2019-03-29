@@ -13,12 +13,12 @@ import (
 	"context"
 	"time"
 
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/iohelper/filter"
-	"bitbucket.org/wseternal/helper/iohelper/pump"
-	"bitbucket.org/wseternal/helper/iohelper/sink"
-	"bitbucket.org/wseternal/helper/iohelper/source"
-	"bitbucket.org/wseternal/helper/logger"
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/iohelper/filter"
+	"github.com/wseternal/helper/iohelper/pump"
+	"github.com/wseternal/helper/iohelper/sink"
+	"github.com/wseternal/helper/iohelper/source"
+	"github.com/wseternal/helper/logger"
 )
 
 type DLCallBack func(dl *ContentDL, fullpath string, err error)

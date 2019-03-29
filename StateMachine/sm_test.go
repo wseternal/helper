@@ -2,7 +2,7 @@ package StateMachine
 
 import (
 	"fmt"
-	"bitbucket.org/wseternal/helper/logger"
+	"github.com/wseternal/helper/logger"
 	"testing"
 	"time"
 )

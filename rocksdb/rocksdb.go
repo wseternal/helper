@@ -1,7 +1,7 @@
 package rocksdb
 
 import (
-	"bitbucket.org/wseternal/helper/logger"
+	"github.com/wseternal/helper/logger"
 
 	"fmt"
 

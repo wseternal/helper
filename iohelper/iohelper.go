@@ -7,11 +7,11 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/iohelper/filter"
-	"bitbucket.org/wseternal/helper/iohelper/pump"
-	"bitbucket.org/wseternal/helper/iohelper/sink"
-	"bitbucket.org/wseternal/helper/iohelper/source"
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/iohelper/filter"
+	"github.com/wseternal/helper/iohelper/pump"
+	"github.com/wseternal/helper/iohelper/sink"
+	"github.com/wseternal/helper/iohelper/source"
 
 	_ "crypto/md5"
 	_ "crypto/sha1"

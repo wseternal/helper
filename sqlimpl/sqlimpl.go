@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/wseternal/helper/logger"
+	"github.com/wseternal/helper/logger"
 
 	// add mysql driver implement
 	"errors"

@@ -4,7 +4,7 @@ package helper
 
 import (
 	"fmt"
-	"bitbucket.org/wseternal/helper/logger"
+	"github.com/wseternal/helper/logger"
 	"os/user"
 	"strconv"
 	"syscall"

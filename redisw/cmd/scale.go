@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bitbucket.org/wseternal/helper/codec"
-	"bitbucket.org/wseternal/helper/redisw"
+	"github.com/wseternal/helper/codec"
+	"github.com/wseternal/helper/redisw"
 	"fmt"
 	"github.com/go-redis/redis"
 	"time"

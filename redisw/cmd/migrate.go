@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/logger"
-	"bitbucket.org/wseternal/helper/redisw"
-	"bitbucket.org/wseternal/helper/sqlimpl"
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/logger"
+	"github.com/wseternal/helper/redisw"
+	"github.com/wseternal/helper/sqlimpl"
 	"context"
 	"flag"
 	"fmt"

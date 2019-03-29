@@ -3,8 +3,8 @@ package rocksdb
 import (
 	"encoding/json"
 	"fmt"
-	"bitbucket.org/wseternal/helper/iohelper/sink"
-	"bitbucket.org/wseternal/helper/jsonrpc"
+	"github.com/wseternal/helper/iohelper/sink"
+	"github.com/wseternal/helper/jsonrpc"
 	"io"
 	"io/ioutil"
 	"net/http"

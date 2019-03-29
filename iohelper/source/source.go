@@ -9,8 +9,8 @@ import (
 	"os"
 	"path"
 
-	"bitbucket.org/wseternal/helper"
-	"bitbucket.org/wseternal/helper/iohelper/filter"
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/iohelper/filter"
 )
 
 // Source encapsulate the original io.Reader with filters
