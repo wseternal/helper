@@ -73,6 +73,13 @@ func (snk *Sink) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+func (snk *Sink) Reader() io.Reader {
+	if r, ok := snk.Writer.(io.Reader); ok  {
+		return r
+	}
+	return nil
+}
+
 func (snk *Sink) Bytes() []byte {
 	if buffer, ok := snk.Writer.(Buffer); ok {
 		return buffer.Bytes()
