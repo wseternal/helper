@@ -2,6 +2,7 @@ package rocksdb
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 
@@ -97,11 +98,10 @@ func BenchmarkRead(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	opt := gorocksdb.NewDefaultReadOptions()
 	b.ResetTimer()
 	fmt.Printf("start benchmark\n")
 	for i := 0; i < b.N; i++ {
-		rdb.Get(opt, []byte(strconv.Itoa(i)))
+		rdb.WriteTo(rdb.CFHs[DefaultColumnFamilyName], []byte(strconv.Itoa(i)), os.Stdout)
 	}
 	rdb.Close()
 }

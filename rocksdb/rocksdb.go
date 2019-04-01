@@ -59,6 +59,7 @@ type RangeOption struct {
 	Key              string
 	CF               string
 	Limit            int64
+
 	// output each object per-line, it's set when output parameter is specified
 	streamOutput bool
 
@@ -72,6 +73,10 @@ type RangeOption struct {
 	// so go routine which selects abortChan and done
 	// channel could be finished.
 	done chan int
+}
+
+type RDBIterator struct {
+	*rocksdb.Iterator
 }
 
 type Iterator = rocksdb.Iterator
@@ -482,13 +487,6 @@ func New(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb
 	return rdb, nil
 }
 
-func (rdb *RDB) Close() {
-	if rdb.DB != nil {
-		rdb.DB.Close()
-		rdb.DB = nil
-	}
-}
-
 func (rdb *RDB) GetProperty(name Property) string {
 	return rdb.DB.GetProperty(fmt.Sprintf("%s%s", rocksdbPrefix, name))
 }
@@ -593,18 +591,6 @@ func (rdb *RDB) SeekForPrevKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byt
 	return nil
 }
 
-// SeekKey return the key greater than or equal to given key
-// return nil if no matching key found
-func (rdb *RDB) SeekKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byte {
-	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
-	defer iter.Close()
-	iter.Seek(key)
-	if iter.Valid() {
-		return append([]byte(nil), iter.Key().Data()...)
-	}
-	return nil
-}
-
 // SeekKeyUpperBound return the first key >= key and the last key <= upper bound
 func (rdb *RDB) SeekKeyUpperBound(cf *rocksdb.ColumnFamilyHandle, key, upperBound []byte) (first, last []byte) {
 	opt := *DefaultReadOption
@@ -627,10 +613,12 @@ func (rdb *RDB) SeekKeyUpperBound(cf *rocksdb.ColumnFamilyHandle, key, upperBoun
 	return first, last
 }
 
+func (rdb *RDB) DeleteCF(cf *rocksdb.ColumnFamilyHandle, key []byte) error {
+	return rdb.DB.DeleteCF(rdb.WriteOpts, cf, key)
+}
+
 func (rdb *RDB) PutCF(cf *rocksdb.ColumnFamilyHandle, key, value []byte) error {
-	err := rdb.DB.PutCF(rdb.WriteOpts, cf, key, value)
-	rdb.Flush()
-	return err
+	return rdb.DB.PutCF(rdb.WriteOpts, cf, key, value)
 }
 
 func (rdb *RDB) GetCF(cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
@@ -646,7 +634,7 @@ func (rdb *RDB) GetCF(cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error
 	return append([]byte(nil), data.Data()...), nil
 }
 
-func (rdb *RDB) Get(cf *rocksdb.ColumnFamilyHandle, key []byte, w io.Writer) error {
+func (rdb *RDB) WriteTo(cf *rocksdb.ColumnFamilyHandle, key []byte, w io.Writer) error {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 	iter.Seek(key)
@@ -833,7 +821,7 @@ func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 	f := GenHijackTsInKeyByIndex(opt.TSFieldIndex, []byte(opt.KeySeparator))
 	cf := rdb.CFHs[opt.CF]
 	rdb.RangeForeachByTS(opt, f, func(iter *rocksdb.Iterator) {
-		err := rdb.DeleteCF(DefaultWriteOption, cf, iter.Key().Data())
+		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
 			logger.LogW("DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
 		} else {
@@ -845,7 +833,7 @@ func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 func (rdb *RDB) DeleteRangeByKey(opt *RangeOption) {
 	cf := rdb.CFHs[opt.CF]
 	rdb.RangeForeach(opt, func(iter *rocksdb.Iterator) {
-		err := rdb.DeleteCF(DefaultWriteOption, cf, iter.Key().Data())
+		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
 			logger.LogW("DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
 		} else {
@@ -893,7 +881,7 @@ func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {
 
 	logger.LogD("GetRange: %+v\n", opt)
 	if len(opt.Key) > 0 {
-		err = rdb.Get(cf, []byte(opt.Key), w)
+		err = rdb.WriteTo(cf, []byte(opt.Key), w)
 		if err != nil {
 			return fmt.Errorf("get using key %s failed: %s", opt.Key, err)
 		}
@@ -937,4 +925,29 @@ func (rdb *RDB) DeleteRange(opt *RangeOption, w io.Writer) error {
 		io.WriteString(w, `{"result":"ok"}`)
 	}
 	return nil
+}
+
+func (rdb *RDB) NewRDBIterator(cf string) *RDBIterator {
+	return &RDBIterator{
+		Iterator: rdb.DB.NewIteratorCF(rdb.ReadOpts, rdb.CFHs[cf]),
+	}
+}
+
+func (it *RDBIterator) Key() []byte {
+	return it.Iterator.Key().Data()
+}
+
+func (it *RDBIterator) Close() error {
+	it.Iterator.Close()
+	return nil
+}
+
+func (it *RDBIterator) Value() []byte {
+	return it.Iterator.Value().Data()
+}
+
+func NewRDBIteratorFrom(iter *Iterator) *RDBIterator {
+	return &RDBIterator{
+		Iterator: iter,
+	}
 }

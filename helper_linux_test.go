@@ -1,5 +1,11 @@
 // +build linux
+
 package helper
+
+import (
+	"fmt"
+	"testing"
+)
 
 func TestIP2Mac(t *testing.T) {
 	mac, err := IP2Mac("1.1.1.1", false)

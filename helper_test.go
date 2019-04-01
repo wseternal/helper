@@ -69,3 +69,9 @@ func TestValidStructType(t *testing.T) {
 		t.Fatalf("%s\n", err)
 	}
 }
+
+func TestNextKey(t *testing.T) {
+	key := "120f3485fff"
+	s, err := NextKey(key)
+	fmt.Printf("nextkey of %s %s, %v\n", key, s, err)
+}
