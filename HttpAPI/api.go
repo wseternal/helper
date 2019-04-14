@@ -1,15 +1,17 @@
 package HttpAPI
 
 import (
-	"github.com/wseternal/helper"
-	"github.com/wseternal/helper/codec"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/codec"
 )
 
 type RequestClient struct {
@@ -151,7 +153,8 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 
 	if api.ResCheckF != nil {
 		if err = api.ResCheckF(ctx, v); err != nil {
-			return nil, fmt.Errorf("%s: sanity check the response failed, %s", api.Name, err)
+			fmt.Fprintf(os.Stderr, "%s: sanity check the response failed, %s", api.Name, err)
+			return nil, err
 		}
 	}
 
