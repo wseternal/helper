@@ -132,18 +132,24 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 	}
 	v = reflect.New(t)
 
-	debug := false
-	if ctx.Get(ContextKeyDebug) != nil {
-		debug = true
-	}
-	if debug {
+	if ctx.IsAPIDebug() {
 		data, _ := ioutil.ReadAll(res.Body)
 		ctx.Set(ContextKeyDebugLastAPI, api.Name)
 		ctx.Set(ContextKeyDebugLastReq, reqObj)
 		ctx.Set(ContextKeyDebugLastResData, data)
+
+		defer func() {
+			if err == nil {
+				return
+			}
+			fmt.Fprintf(os.Stderr, "error context: apiname: %s, request: %s\n", api.Name, req.URL.String())
+			fmt.Fprintf(os.Stderr, "error context: request object: %+v\n", reqObj)
+			fmt.Fprintf(os.Stderr, "error context: request object content: %s\n", codec.JsonMarshal(reqObj))
+			fmt.Fprintf(os.Stderr, "error context: response content: %s\n", string(data))
+
+		}()
 		if err = json.Unmarshal(data, v.Interface()); err != nil {
 			return nil, fmt.Errorf("unmarshal response %s to %s failed, %s", string(data), t.String(), err)
-
 		}
 	} else {
 		if err = codec.JsonUnmarshalFrom(res.Body, v.Interface()); err != nil {
@@ -153,7 +159,7 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 
 	if api.ResCheckF != nil {
 		if err = api.ResCheckF(ctx, v); err != nil {
-			fmt.Fprintf(os.Stderr, "%s: sanity check the response failed, %s", api.Name, err)
+			fmt.Fprintf(os.Stderr, "%s: sanity check the response failed, %s\n", api.Name, err)
 			return nil, err
 		}
 	}
