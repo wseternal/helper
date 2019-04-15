@@ -613,6 +613,10 @@ func (rdb *RDB) SeekKeyUpperBound(cf *rocksdb.ColumnFamilyHandle, key, upperBoun
 	return first, last
 }
 
+func (rdb *RDB) NewWriteBatch() *rocksdb.WriteBatch {
+	return rocksdb.NewWriteBatch()
+}
+
 func (rdb *RDB) DeleteCF(cf *rocksdb.ColumnFamilyHandle, key []byte) error {
 	return rdb.DB.DeleteCF(rdb.WriteOpts, cf, key)
 }
