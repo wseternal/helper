@@ -19,6 +19,13 @@ type apiContextValue struct {
 	sync.RWMutex
 }
 
+func (c *APIContext) Delete(key string) {
+	m := c.Value(apiContextKey).(*apiContextValue)
+	m.Lock()
+	delete(m.elems, key)
+	m.Unlock()
+}
+
 func (c *APIContext) Set(key string, val interface{}) {
 	m := c.Value(apiContextKey).(*apiContextValue)
 	m.Lock()
