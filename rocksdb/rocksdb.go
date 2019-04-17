@@ -503,6 +503,10 @@ func (rdb *RDB) Flush() error {
 	return rdb.DB.Flush(DefaultFlushOption)
 }
 
+func (rdb *RDB) CompactCF(cf *rocksdb.ColumnFamilyHandle) {
+	rdb.DB.CompactRangeCF(cf, rocksdb.Range{})
+}
+
 func (rdb *RDB) Backup(fn string) error {
 	engine, err := GetBackupEngine(fn)
 	if err != nil {
@@ -666,10 +670,9 @@ func NewKVJson(iter *rocksdb.Iterator) *KVJson {
 }
 
 // RangeForeach enumerate all keys falls in range [startKey, endKey],
-func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) {
+func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 	if oper == nil {
-		logger.LogE("%s\n", "RangeForeach: oper parameter is nil")
-		return
+		return fmt.Errorf("oper parameter is nil")
 	}
 	tStart := time.Now()
 	cf := rdb.CFHs[opt.CF]
@@ -696,12 +699,13 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) {
 			break
 		}
 		if opt.abort {
-			break
+			return fmt.Errorf("abort flag is set")
 		}
 	}
 	if cnt > 0 {
 		logger.LogI("RangeForeach: iterator %d entries, spent %s, abort: %t\n", cnt, time.Now().Sub(tStart).String(), opt.abort)
 	}
+	return nil
 }
 
 // RangeForeachByTS enumerate all entries with the ts field falls in range [startTS, endTS]
