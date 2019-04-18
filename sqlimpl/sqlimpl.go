@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/wseternal/helper/logger"
 
@@ -36,6 +37,7 @@ func ConnectDB(driver string, dsn string) (*SQLImpl, error) {
 	if err = DB.Ping(); err != nil {
 		return nil, err
 	}
+	DB.SetConnMaxLifetime(time.Minute * 2)
 	return &SQLImpl{
 		DB:     DB,
 		Driver: driver,
@@ -72,9 +74,9 @@ func (impl *SQLImpl) GetTable(name string) (*DataTable, error) {
 	}
 
 	return &DataTable{
-		Name: name,
+		Name:            name,
 		CreateStatement: create,
-		impl: impl,
+		impl:            impl,
 	}, nil
 }
 
