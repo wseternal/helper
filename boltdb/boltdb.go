@@ -7,10 +7,8 @@ import (
 )
 
 type BoltDB struct {
-	h *bolt.DB
-
-	// corresponding option when opening the db
-	Option *bolt.Options
+	h    *bolt.DB
+	Path string
 }
 
 var (
@@ -21,17 +19,13 @@ var (
 func init() {
 }
 
-func New(fn string, readonly bool) (*BoltDB, error) {
-	opt := NewOptions()
-	opt.ReadOnly = readonly
-	db, err := bolt.Open(fn, 0600, opt)
-	return &BoltDB{
-		h:      db,
-		Option: opt,
-	}, err
-}
-
-func NewOptions() *bolt.Options {
+func NewBoltDB(fn string, readonly bool) (*BoltDB, error) {
 	opt := *bolt.DefaultOptions
-	return &opt
+	opt.ReadOnly = readonly
+
+	db, err := bolt.Open(fn, 0600, &opt)
+	return &BoltDB{
+		h:    db,
+		Path: fn,
+	}, err
 }
