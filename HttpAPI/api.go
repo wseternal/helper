@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,10 +36,16 @@ type API struct {
 }
 
 const (
+	ContextKeyRequestDesc = "__api_request_desc"
+	ContextKeyRequestID   = "__api_request_id"
+	ContextKeyRequestPath = "__api_request_path"
+	ContextKeyRequestForm = "__api_request_form"
+
 	ContextKeyReqObj    = "__api_req_obj"
 	ContextKeyReqClient = "__api_req_client"
 	ContextKeySpent     = "__api_spent"
 	ContextKeyDebug     = "__api_debug"
+
 	//following context key will be set if debug
 	ContextKeyDebugLastResData = "__api_debug_last_response_data"
 	ContextKeyDebugLastReq     = "__api_debug_last_req"
@@ -165,4 +172,10 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 	}
 
 	return v.Interface(), nil
+}
+
+// return http request path fields separated by "/"
+// e.g.: /a/b/c => ["a", "b", "c"]
+func SplitRequestPath(req *http.Request) []string {
+	return strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 }

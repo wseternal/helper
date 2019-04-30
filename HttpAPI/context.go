@@ -2,7 +2,14 @@ package HttpAPI
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
 	"sync"
+	"time"
+
+	"github.com/wseternal/helper/codec"
 )
 
 // context with Set/Get for multiple context values
@@ -69,9 +76,12 @@ func NewAPIContext(ctx context.Context) *APIContext {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return &APIContext{
+	apiCtx := &APIContext{
 		Context: context.WithValue(ctx, apiContextKey, m),
 	}
+	requestID := fmt.Sprintf("apictx_%d_%p", time.Now().Unix(), ctx)
+	apiCtx.Set(ContextKeyRequestID, requestID)
+	return apiCtx
 }
 
 func (c *APIContext) EnableAPIDebug() {
@@ -93,4 +103,42 @@ func (c *APIContext) GetLastAPIResponse() []byte {
 		}
 	}
 	return nil
+}
+
+func NewAPIContextWithCloseNotifier(w http.ResponseWriter, req *http.Request) (apiCtx *APIContext, cancel context.CancelFunc) {
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(context.Background())
+	apiCtx = NewAPIContext(ctx)
+
+	requestID := req.FormValue(ContextKeyRequestID)
+	if len(requestID) > 0 {
+		apiCtx.Set(ContextKeyRequestID, requestID)
+	}
+
+	if len(req.FormValue(ContextKeyDebug)) > 0 {
+		apiCtx.EnableAPIDebug()
+	}
+
+	apiCtx.Set(ContextKeyRequestPath, req.URL.Path)
+	apiCtx.Set(ContextKeyRequestForm, json.RawMessage(codec.JsonMarshal(req.Form)))
+
+	// cancel the operation if client disconnected
+	c := w.(http.CloseNotifier).CloseNotify()
+	go func() {
+		select {
+		case <-c:
+			fmt.Fprintf(os.Stderr, "client closed the connection, abort %s\n", apiCtx.Get(ContextKeyRequestID).(string))
+			cancel()
+		case <-apiCtx.Done():
+			break
+		}
+	}()
+	return
+}
+
+func (c *APIContext) String() string {
+	m := c.Value(apiContextKey).(*apiContextValue)
+	m.RLock()
+	defer m.RUnlock()
+	return codec.JsonMarshal(m.elems)
 }
