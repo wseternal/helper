@@ -56,6 +56,9 @@ func ToJsonResult(val interface{}) string {
 
 func WriteHttpResult(w http.ResponseWriter, res interface{}, err error) {
 	if err == nil {
+		if res == nil {
+			res = "ok"
+		}
 		io.WriteString(w, ToJsonResult(res))
 		return
 	}
