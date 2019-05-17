@@ -28,6 +28,8 @@ var (
 	muxSigActions sync.Mutex
 	sigActions    map[syscall.Signal]*SigAction
 	sigChan       chan os.Signal
+
+	LocationCST = time.FixedZone("ChinaCST", 8*3600)
 )
 
 // 2006-01-02 15:04:05"
@@ -238,19 +240,31 @@ func GetDirectorySize(dir string) (size int64, err error) {
 	return size, err
 }
 
-// UnixDate return unix timestamp of 00:00:00 day with given offset
-// 0: 00:00:00 of today, -1 00:00:00 of yesterday,  1: 00:00:00 tomorrow
+// UnixDate return unix timestamp of 00:00:00 (in CST) respect to offDay
+// offDay 0: 00:00:00 of today, -1 00:00:00 of yesterday,  1: 00:00:00 tomorrow
 func UnixDate(offDay int) int64 {
-	now := time.Now()
-	y, m, d := now.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix() + int64(offDay*86400)
+	return UnixDateLocation(offDay, LocationCST)
 }
 
-// zoneOff: timezone offset, postive for east, negative for west, 0 for UTC
-// e.g.: +8 for CST
-func UnixDateWithZone(offDay int, zoneOff int8) int64 {
-	_, off := time.Now().Zone()
-	return UnixDate(offDay) + int64(zoneOff)*3600 - int64(off)
+// return unix timestamp of 00:00:00 today
+// if location is nil, use time.Local
+// use time.FixedZone(name, offset) to generate customized location.
+func UnixTodayZero(tsUtcNow int64, location *time.Location) int64 {
+	utcTime := time.Unix(tsUtcNow, 0)
+	if location == nil {
+		location = time.Local
+	}
+	t := utcTime.In(location)
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, t.Location()).Unix()
+}
+
+// return unix timestamp of 00:00:00 against offDay
+// offDay: 0 (today), +1 (tomorrow), -1 (yesterday), etc
+// use time.FixedZone(name, offset) to generate customized location.
+func UnixDateLocation(offDay int, location *time.Location) int64 {
+	todayZero := UnixTodayZero(time.Now().Unix(), location)
+	return todayZero + int64(offDay)*86400
 }
 
 // check whether local timezone is as expected as given value, e.g.: for china, +8

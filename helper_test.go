@@ -35,7 +35,9 @@ func TestSameSliceBackend(t *testing.T) {
 func TestUnixDate(t *testing.T) {
 	zone, off := time.Now().Zone()
 	fmt.Printf("unix timestamp of tody: %d, in zone: %s, zoneoff: %d\n", UnixDate(0), zone, off)
-	fmt.Printf("unix timestamp of today of zone 4: %d\n", UnixDateWithZone(0, +4))
+	loc := time.FixedZone("zone+4", 4*3600)
+	fmt.Printf("unix timestamp of today of zone 4: %d\n", UnixDateLocation(0, loc))
+	fmt.Printf("unix timestamp of today of zone 8: %d\n", UnixDateLocation(0, LocationCST))
 }
 
 type TT struct {
@@ -43,7 +45,7 @@ type TT struct {
 }
 
 func TestValidStructType(t *testing.T) {
-	a := TT {
+	a := TT{
 		Name: "123",
 	}
 
