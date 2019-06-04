@@ -166,7 +166,7 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 
 	if api.ResCheckF != nil {
 		if err = api.ResCheckF(ctx, v); err != nil {
-			fmt.Fprintf(os.Stderr, "%s: sanity check the response failed, %s\n", api.Name, err)
+			fmt.Fprintf(os.Stderr, "%s: request obj %+v, sanity check the response failed, %s\n", api.Name, reqObj, err)
 			return nil, err
 		}
 	}
