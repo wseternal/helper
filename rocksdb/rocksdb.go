@@ -96,6 +96,9 @@ var (
 	DefaultDBOption      = NewDBOptions()
 	DefaultRestoreOption = rocksdb.NewRestoreOptions()
 	DefaultFlushOption   = rocksdb.NewDefaultFlushOptions()
+
+	// please refer to https://github.com/facebook/rocksdb/wiki/Rate-Limiter
+	DefaultRateLimiter = rocksdb.NewRateLimiter(10<<20, 100000, 10)
 )
 
 const (
@@ -267,6 +270,7 @@ func setDefault(opts *rocksdb.Options) {
 	opts.SetMaxTotalWalSize(128 << 20)
 	opts.SetWALTtlSeconds(60)
 	opts.SetWalSizeLimitMb(8)
+	opts.SetRateLimiter(DefaultRateLimiter)
 }
 
 func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *rocksdb.Options {
