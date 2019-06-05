@@ -580,11 +580,11 @@ func (rdb *RDB) KeyExist(cf *rocksdb.ColumnFamilyHandle, key []byte) bool {
 	defer iter.Close()
 	iter.Seek(key)
 
-	// Slice, map, and function values are not comparable
-	if !(iter.Valid() && string(iter.Key().Data()) == string(key)) {
-		return false
+	// as Slice, map, and function values are not comparable, convert byte slice to string
+	if iter.Valid() && string(iter.Key().Data()) == string(key) {
+		return true
 	}
-	return true
+	return false
 }
 
 // SeekForPrevKey return the key less than or equal to given key
