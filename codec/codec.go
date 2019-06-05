@@ -64,3 +64,7 @@ func WriteHttpResult(w http.ResponseWriter, res interface{}, err error) {
 	}
 	io.WriteString(w, ToJsonError(err))
 }
+
+func WriteResultObject(w http.ResponseWriter, res interface{}) {
+	io.WriteString(w, JsonMarshal(res))
+}
