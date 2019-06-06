@@ -319,13 +319,13 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	// read_amp_bytes_per_bit default 0 (disabled), This number must be a power of 2
 	opts := rocksdb.NewDefaultOptions()
 	setDefault(opts)
+	opts.OptimizeLevelStyleCompaction(uint64(writeBufferSize << 2))
 
 	bbto := rocksdb.NewDefaultBlockBasedTableOptions()
 	if bloomFilterBit > 0 {
 		filter := rocksdb.NewBloomFilter(bloomFilterBit)
 		bbto.SetFilterPolicy(filter)
 	}
-
 	if blockCacheSize <= 0 {
 		blockCacheSize = DefaultBlockCacheSize
 	}
@@ -334,10 +334,16 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	if writeBufferSize <= 0 {
 		writeBufferSize = DefaultWriteBufferSize
 	}
+	// use 64K block size
+	bbto.SetBlockSize(64 << 10)
 
 	opts.SetWriteBufferSize(writeBufferSize)
 	opts.SetBlockBasedTableFactory(bbto)
-	opts.OptimizeLevelStyleCompaction(uint64(writeBufferSize << 2))
+
+	opts.SetCompactionStyle(rocksdb.LevelCompactionStyle)
+	// use 512M for L1
+	opts.SetMaxBytesForLevelBase(512 << 20)
+
 	return opts
 }
 
