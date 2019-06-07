@@ -341,8 +341,12 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	opts.SetBlockBasedTableFactory(bbto)
 
 	opts.SetCompactionStyle(rocksdb.LevelCompactionStyle)
+	// use maximum 1024M for L1
+	opts.SetMaxBytesForLevelBase(1024 << 20)
+	opts.SetMaxBytesForLevelMultiplier(10)
 	// use 512M for L1
-	opts.SetMaxBytesForLevelBase(512 << 20)
+	opts.SetTargetFileSizeBase(512 << 20)
+	opts.SetTargetFileSizeMultiplier(10)
 
 	return opts
 }
