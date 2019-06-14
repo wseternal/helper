@@ -3,13 +3,14 @@ package rocksdb
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/wseternal/helper/iohelper/sink"
-	"github.com/wseternal/helper/jsonrpc"
-	"io"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
+
+	"github.com/wseternal/helper/codec"
+	"github.com/wseternal/helper/iohelper/sink"
+	"github.com/wseternal/helper/jsonrpc"
 )
 
 func (rdb *RDB) handleInfo(params interface{}) ([]byte, error) {
@@ -107,7 +108,7 @@ func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan 
 }
 
 func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <-chan bool) (*jsonrpc.Response, error) {
-	var data []byte
+	var res interface{}
 	var err error
 	var resp = &jsonrpc.Response{
 		JsonRpc: jsonrpc.RPCVersion,
@@ -118,31 +119,35 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <-chan bool) (*jsonrpc
 
 	switch req.Method {
 	case "get", "delete":
-		data, err = rdb.handleRangeActioin(req.Method, req.Params, closeChan)
+		res, err = rdb.handleRangeActioin(req.Method, req.Params, closeChan)
 	case "info":
-		data, err = rdb.handleInfo(req.Params)
+		res, err = rdb.handleInfo(req.Params)
 	case "flush":
 		rdb.Flush()
-		data = []byte("flush ok")
+		res = "flush ok"
 	case "compact":
 		rdb.Flush()
 		for _, v := range rdb.CFHs {
 			rdb.CompactCF(v)
 		}
-		data = []byte("compact ok")
+		res = "compact ok"
 	default:
 		err = fmt.Errorf("unsupported method: %s", req.Method)
 	}
 	if err != nil {
 		return nil, err
 	}
-	resp.Result = json.RawMessage(data)
+	if buf, ok := res.([]byte); ok {
+		resp.Result = json.RawMessage(buf)
+	} else {
+		resp.Result = res
+	}
 	return resp, nil
 }
 
 func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 	var err error
-	var res []byte
+	var res interface{}
 
 	notify := w.(http.CloseNotifier).CloseNotify()
 	if req.Method != http.MethodPost {
@@ -153,7 +158,6 @@ func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case "/api/rpc":
 		var jsonReq = &jsonrpc.Request{}
-		var resp *jsonrpc.Response
 		var data []byte
 		if data, err = ioutil.ReadAll(req.Body); err != nil {
 			goto out
@@ -161,17 +165,10 @@ func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 		if err = jsonReq.UnmarshalFrom(data); err != nil {
 			goto out
 		}
-		resp, err = rdb.HandleRPC(jsonReq, notify)
-		res = []byte(resp.String())
+		res, err = rdb.HandleRPC(jsonReq, notify)
 	default:
 		err = fmt.Errorf("request URL %s is not supported", req.URL.Path)
 	}
 out:
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, err.Error())
-	} else {
-		w.Write(res)
-	}
-	return
+	codec.WriteHttpResult(w, res, err)
 }

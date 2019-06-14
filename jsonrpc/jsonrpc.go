@@ -44,12 +44,14 @@ var (
 )
 
 func (resp *Response) Data() []byte {
-	data, _ := json.Marshal(resp)
-	return data
+	return []byte(resp.String())
 }
 
 func (resp *Response) String() string {
-	data, _ := json.Marshal(resp)
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return err.Error()
+	}
 	return string(data)
 }
 
