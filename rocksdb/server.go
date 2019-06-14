@@ -30,7 +30,7 @@ func (rdb *RDB) handleInfo(params interface{}) ([]byte, error) {
 	return snk.Bytes(), err
 }
 
-func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan <- chan bool) ([]byte, error) {
+func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan <-chan bool) ([]byte, error) {
 	opt := NewRangeOption()
 	var output string
 	var snk *sink.Sink
@@ -106,7 +106,7 @@ func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan 
 	return snk.Bytes(), nil
 }
 
-func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <- chan bool) (*jsonrpc.Response, error) {
+func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <-chan bool) (*jsonrpc.Response, error) {
 	var data []byte
 	var err error
 	var resp = &jsonrpc.Response{
@@ -121,6 +121,15 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <- chan bool) (*jsonrp
 		data, err = rdb.handleRangeActioin(req.Method, req.Params, closeChan)
 	case "info":
 		data, err = rdb.handleInfo(req.Params)
+	case "flush":
+		rdb.Flush()
+		data = []byte("flush ok")
+	case "compact":
+		rdb.Flush()
+		for _, v := range rdb.CFHs {
+			rdb.CompactCF(v)
+		}
+		data = []byte("compact ok")
 	default:
 		err = fmt.Errorf("unsupported method: %s", req.Method)
 	}
