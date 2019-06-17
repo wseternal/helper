@@ -5,8 +5,9 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
-	"github.com/tecbot/gorocksdb"
+	"github.com/wseternal/gorocksdb"
 )
 
 var (
@@ -17,13 +18,7 @@ var (
 )
 
 func initDB(dbpath string) (rdb *RDB, err error) {
-	if !Exist(dbpath) {
-		fmt.Printf("db %s is not existed, create it\n", dbpath)
-		if err = Create(dbpath, nil, nil); err != nil {
-			return nil, err
-		}
-	}
-	rdb, err = New(dbpath, nil, nil, false)
+	rdb, err = New(dbpath, nil, cfOpts, false)
 	if err != nil {
 		return nil, err
 	}
@@ -56,17 +51,41 @@ func TestCreateOpen(t *testing.T) {
 	db.Close()
 }
 
+func TestSecondary(t *testing.T) {
+	db, err := New("./r.db", nil, cfOpts, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db2, err := NewSecondary("./r.db", "r2.db", nil, cfOpts)
+	if err != nil {
+		t.Fatalf("open secondard rdb failed, %s\n", err)
+	}
+
+	key := strconv.FormatInt(time.Now().Unix(), 10)
+
+	if err = db.PutCF(db.CFHs[DefaultColumnFamilyName], []byte(key), []byte(key)); err != nil {
+		t.Fatalf("write db failed, %s\n", err)
+	}
+	fmt.Printf("set %s on db master\n", key)
+	db.Flush()
+	db2.TryCatchUpWithPrimary()
+	var val []byte
+	val, err = db2.GetCF(db.CFHs[DefaultColumnFamilyName], []byte(key))
+	fmt.Printf("%v %v\n", val, err)
+	db2.Close()
+	db.Close()
+}
+
 func BenchmarkWrite(b *testing.B) {
 	rdb, err := New("./r.db", nil, nil, false)
 	if err != nil {
 		b.Fatal(err)
 	}
 	data := []byte("test")
-	opt := gorocksdb.NewDefaultWriteOptions()
 	b.ResetTimer()
 	fmt.Printf("start benchmark\n")
 	for i := 0; i < b.N; i++ {
-		rdb.Put(opt, []byte(strconv.Itoa(i)), data)
+		rdb.Put([]byte(DefaultColumnFamilyName), []byte(strconv.Itoa(i)), data)
 	}
 	rdb.Close()
 }

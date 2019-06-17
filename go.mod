@@ -8,9 +8,9 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
-	github.com/tecbot/gorocksdb v0.0.0-20181010114359-8752a9433481
-	golang.org/x/sys v0.0.0-20190422165155-953cdadca894 // indirect
-	google.golang.org/appengine v1.5.0 // indirect
+	github.com/wseternal/gorocksdb v0.0.0-20190519120508-025c3cf4ffb4
+	golang.org/x/sys v0.0.0-20190616124812-15dcb6c0061f // indirect
+	google.golang.org/appengine v1.6.1 // indirect
 )
 
-replace github.com/tecbot/gorocksdb => ../../tecbot/gorocksdb
+replace github.com/wseternal/gorocksdb => ../gorocksdb

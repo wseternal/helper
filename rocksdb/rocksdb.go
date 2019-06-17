@@ -1,17 +1,16 @@
 package rocksdb
 
 import (
-	"github.com/wseternal/helper/logger"
-
-	"fmt"
-
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
 	"time"
 
-	rocksdb "github.com/tecbot/gorocksdb"
+	"github.com/wseternal/helper/logger"
+
+	rocksdb "github.com/wseternal/gorocksdb"
 )
 
 type BackupInfo struct {
@@ -33,6 +32,9 @@ type RDB struct {
 	CFHs      CFHandles
 	WriteOpts *rocksdb.WriteOptions
 	ReadOpts  *rocksdb.ReadOptions
+
+	isSecondary   bool
+	secondaryPath string
 }
 
 type CFOptions map[string]*rocksdb.Options
@@ -204,7 +206,7 @@ func GenHijackTsInKeyByIndex(idx int, sep []byte) HijackTsInKey {
 	}
 }
 
-func (cfOpts CFOptions) GetKVPaire() ([]string, []*rocksdb.Options) {
+func (cfOpts CFOptions) GetKVPair() ([]string, []*rocksdb.Options) {
 	optLen := len(cfOpts)
 	keys := make([]string, optLen)
 	values := make([]*rocksdb.Options, optLen)
@@ -231,36 +233,6 @@ func Exist(fn string) bool {
 		return true
 	}
 	return false
-}
-
-func Create(fn string, opts *rocksdb.Options, cfOpts CFOptions) (err error) {
-	if opts == nil {
-		opts = NewDBOptions()
-	}
-	defer func() {
-		if err != nil {
-			rocksdb.DestroyDb(fn, opts)
-		}
-	}()
-
-	opts.SetErrorIfExists(true)
-	opts.SetCreateIfMissing(true)
-	opts.SetCreateIfMissingColumnFamilies(true)
-
-	if cfOpts == nil {
-		cfOpts = make(CFOptions, 1)
-	}
-
-	var db *rocksdb.DB
-
-	cfOpts.AddDefaultCF()
-	keys, values := cfOpts.GetKVPaire()
-	if db, _, err = rocksdb.OpenDbColumnFamilies(opts, fn, keys, values); err != nil {
-		return err
-	}
-	db.Close()
-
-	return
 }
 
 func setDefault(opts *rocksdb.Options) {
@@ -319,6 +291,7 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	// read_amp_bytes_per_bit default 0 (disabled), This number must be a power of 2
 	opts := rocksdb.NewDefaultOptions()
 	setDefault(opts)
+
 	opts.OptimizeLevelStyleCompaction(uint64(writeBufferSize << 2))
 
 	bbto := rocksdb.NewDefaultBlockBasedTableOptions()
@@ -352,7 +325,6 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 }
 
 func NewDBOptions() *rocksdb.Options {
-	opts := rocksdb.NewDefaultOptions()
 	// https://github.com/facebook/rocksdb/blob/master/include/rocksdb/options.h
 	// create_if_missing
 	// create_missing_column_families
@@ -440,8 +412,65 @@ func NewDBOptions() *rocksdb.Options {
 	// manual_wal_flush: default false, If true WAL is not flushed automatically after each write. Instead it relies on manual invocation of FlushWAL to write the WAL buffer to its file.
 	// TODO add dump_malloc_stats
 
+	opts := rocksdb.NewDefaultOptions()
 	setDefault(opts)
+
+	opts.SetCreateIfMissing(true)
+	opts.SetCreateIfMissingColumnFamilies(true)
+
 	return opts
+}
+
+func NewSecondary(master, secondary string, opts *rocksdb.Options, cfOpts CFOptions) (rdb *RDB, err error) {
+	if opts == nil {
+		opts = NewDBOptions()
+	}
+	if cfOpts == nil {
+		cfOpts = make(CFOptions, 1)
+	}
+	cfOpts.AddDefaultCF()
+
+	var cfsDB []string
+	if Exist(master) {
+		if cfsDB, err = rocksdb.ListColumnFamilies(opts, master); err != nil {
+			return nil, err
+		}
+	}
+	for _, v := range cfsDB {
+		if _, found := cfOpts[v]; !found {
+			cfOpts[v] = NewCFOptions(DefaultWriteBufferSize, DefaultBlockCacheSize, DefaultBloomFilterBit)
+		}
+	}
+
+	keys, values := cfOpts.GetKVPair()
+
+	// duplicate
+	readOpts := *DefaultReadOption
+	writeOpts := *DefaultWriteOption
+
+	rdb = &RDB{
+		ReadOpts:      &readOpts,
+		WriteOpts:     &writeOpts,
+		secondaryPath: secondary,
+	}
+
+	defer func() {
+		if err != nil && rdb.DB != nil {
+			rdb.Close()
+			rdb.DB = nil
+		}
+	}()
+
+	var handles []*rocksdb.ColumnFamilyHandle
+
+	if rdb.DB, handles, err = rocksdb.OpenDbAsSecondaryColumnFamilies(opts, master, secondary, keys, values); err != nil {
+		return rdb, err
+	}
+	rdb.CFHs = make(CFHandles, len(keys))
+	for i, v := range keys {
+		rdb.CFHs[v] = handles[i]
+	}
+	return rdb, nil
 }
 
 // New if fn does not exist when opening, CreateIfMissing could be set to avoid opening error
@@ -466,7 +495,7 @@ func New(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb
 		}
 	}
 
-	keys, values := cfOpts.GetKVPaire()
+	keys, values := cfOpts.GetKVPair()
 
 	// duplicate
 	readOpts := *DefaultReadOption

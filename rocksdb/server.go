@@ -13,6 +13,23 @@ import (
 	"github.com/wseternal/helper/jsonrpc"
 )
 
+func (rdb *RDB) handleSet(params interface{}) error {
+	var p *string
+	if p = jsonrpc.GetStringField(params, "key"); p == nil {
+		return fmt.Errorf("key is required")
+	}
+	key := *p
+	if p = jsonrpc.GetStringField(params, "value"); p == nil {
+		return fmt.Errorf("value is required")
+	}
+	val := *p
+	cf := DefaultColumnFamilyName
+	if p = jsonrpc.GetStringField(params, "cf"); p != nil {
+		cf = *p
+	}
+	return rdb.PutCF(rdb.CFHs[cf], []byte(key), []byte(val))
+}
+
 func (rdb *RDB) handleInfo(params interface{}) ([]byte, error) {
 	var err error
 	var verbose bool
@@ -120,6 +137,10 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <-chan bool) (*jsonrpc
 	switch req.Method {
 	case "get", "delete":
 		res, err = rdb.handleRangeActioin(req.Method, req.Params, closeChan)
+	case "set":
+		if err = rdb.handleSet(req.Params); err == nil {
+			res = "set ok"
+		}
 	case "info":
 		res, err = rdb.handleInfo(req.Params)
 	case "flush":

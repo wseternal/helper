@@ -2,6 +2,10 @@ package rocksdb
 
 import (
 	"context"
+	"fmt"
+	"os"
+
+	"github.com/wseternal/gorocksdb"
 	"github.com/wseternal/helper/kvdb"
 )
 
@@ -55,6 +59,11 @@ func (rdb *RDB) Range(ctx context.Context, set, start, end []byte, f func(iterat
 func (rdb *RDB) Close() error {
 	if rdb.DB != nil {
 		rdb.DB.Close()
+		if len(rdb.secondaryPath) > 0 {
+			if err := gorocksdb.DestroyDb(rdb.secondaryPath, DefaultDBOption); err != nil {
+				fmt.Fprintf(os.Stderr, "destroy secondary db %s failed, %s\n", rdb.secondaryPath, err)
+			}
+		}
 		rdb.DB = nil
 	}
 	return nil
