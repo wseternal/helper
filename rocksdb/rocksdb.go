@@ -10,7 +10,7 @@ import (
 
 	"github.com/wseternal/helper/logger"
 
-	rocksdb "github.com/wseternal/gorocksdb"
+	gorocksdb "github.com/wseternal/gorocksdb"
 )
 
 type BackupInfo struct {
@@ -28,18 +28,18 @@ type CFInfo struct {
 }
 
 type RDB struct {
-	*rocksdb.DB
+	*gorocksdb.DB
 	CFHs      CFHandles
-	WriteOpts *rocksdb.WriteOptions
-	ReadOpts  *rocksdb.ReadOptions
+	WriteOpts *gorocksdb.WriteOptions
+	ReadOpts  *gorocksdb.ReadOptions
 
 	isSecondary   bool
 	secondaryPath string
 }
 
-type CFOptions map[string]*rocksdb.Options
-type CFHandles map[string]*rocksdb.ColumnFamilyHandle
-type WriteBatches map[string]*rocksdb.WriteBatch
+type CFOptions map[string]*gorocksdb.Options
+type CFHandles map[string]*gorocksdb.ColumnFamilyHandle
+type WriteBatches map[string]*gorocksdb.WriteBatch
 
 type Property string
 type PropertyPrefix string
@@ -78,29 +78,29 @@ type RangeOption struct {
 }
 
 type RDBIterator struct {
-	*rocksdb.Iterator
+	*gorocksdb.Iterator
 }
 
-type Iterator = rocksdb.Iterator
+type Iterator = gorocksdb.Iterator
 
 type HijackTsInKey func(ts string, key []byte) (newKey []byte, nextKey []byte)
 
 // in RangeFunc, key/value data of iterator shall be deep copied if you want to store them.
-type RangeFunc func(iter *rocksdb.Iterator)
+type RangeFunc func(iter *gorocksdb.Iterator)
 
 const (
 	rocksdbPrefix = "rocksdb."
 )
 
 var (
-	DefaultWriteOption   = rocksdb.NewDefaultWriteOptions()
-	DefaultReadOption    = rocksdb.NewDefaultReadOptions()
+	DefaultWriteOption   = gorocksdb.NewDefaultWriteOptions()
+	DefaultReadOption    = gorocksdb.NewDefaultReadOptions()
 	DefaultDBOption      = NewDBOptions()
-	DefaultRestoreOption = rocksdb.NewRestoreOptions()
-	DefaultFlushOption   = rocksdb.NewDefaultFlushOptions()
+	DefaultRestoreOption = gorocksdb.NewRestoreOptions()
+	DefaultFlushOption   = gorocksdb.NewDefaultFlushOptions()
 
 	// please refer to https://github.com/facebook/rocksdb/wiki/Rate-Limiter
-	DefaultRateLimiter = rocksdb.NewRateLimiter(10<<20, 100000, 10)
+	DefaultRateLimiter = gorocksdb.NewRateLimiter(10<<20, 100000, 10)
 )
 
 const (
@@ -206,10 +206,10 @@ func GenHijackTsInKeyByIndex(idx int, sep []byte) HijackTsInKey {
 	}
 }
 
-func (cfOpts CFOptions) GetKVPair() ([]string, []*rocksdb.Options) {
+func (cfOpts CFOptions) GetKVPair() ([]string, []*gorocksdb.Options) {
 	optLen := len(cfOpts)
 	keys := make([]string, optLen)
-	values := make([]*rocksdb.Options, optLen)
+	values := make([]*gorocksdb.Options, optLen)
 	idx := 0
 	for k, v := range cfOpts {
 		keys[idx] = k
@@ -226,8 +226,8 @@ func (cfOpts CFOptions) AddDefaultCF() {
 }
 
 func Exist(fn string) bool {
-	opts := rocksdb.NewDefaultOptions()
-	tmp, err := rocksdb.OpenDbForReadOnly(opts, fn, false)
+	opts := gorocksdb.NewDefaultOptions()
+	tmp, err := gorocksdb.OpenDbForReadOnly(opts, fn, false)
 	if err == nil {
 		tmp.Close()
 		return true
@@ -235,9 +235,9 @@ func Exist(fn string) bool {
 	return false
 }
 
-func setDefault(opts *rocksdb.Options) {
+func setDefault(opts *gorocksdb.Options) {
 	opts.SetKeepLogFileNum(1)
-	opts.SetInfoLogLevel(rocksdb.WarnInfoLogLevel)
+	opts.SetInfoLogLevel(gorocksdb.WarnInfoLogLevel)
 	opts.SetMaxLogFileSize(128 << 20)
 	opts.SetMaxTotalWalSize(128 << 20)
 	opts.SetWALTtlSeconds(60)
@@ -245,7 +245,7 @@ func setDefault(opts *rocksdb.Options) {
 	opts.SetRateLimiter(DefaultRateLimiter)
 }
 
-func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *rocksdb.Options {
+func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *gorocksdb.Options {
 	// OptimizeForSmallDb func, Use this if your DB is very small (like under 1GB)
 	// OptimizeForPointLookup func,  don't need to keep the data sorted, i.e., you'll never use an iterator.
 	// OptimizeLevelStyleCompaction func
@@ -289,20 +289,20 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	// verify_compression default false, Verify that decompressing the compressed block gives back the input.
 	// it's a verification mode that we use to detect bugs in compression algorithms.
 	// read_amp_bytes_per_bit default 0 (disabled), This number must be a power of 2
-	opts := rocksdb.NewDefaultOptions()
+	opts := gorocksdb.NewDefaultOptions()
 	setDefault(opts)
 
 	opts.OptimizeLevelStyleCompaction(uint64(writeBufferSize << 2))
 
-	bbto := rocksdb.NewDefaultBlockBasedTableOptions()
+	bbto := gorocksdb.NewDefaultBlockBasedTableOptions()
 	if bloomFilterBit > 0 {
-		filter := rocksdb.NewBloomFilter(bloomFilterBit)
+		filter := gorocksdb.NewBloomFilter(bloomFilterBit)
 		bbto.SetFilterPolicy(filter)
 	}
 	if blockCacheSize <= 0 {
 		blockCacheSize = DefaultBlockCacheSize
 	}
-	bbto.SetBlockCache(rocksdb.NewLRUCache(blockCacheSize))
+	bbto.SetBlockCache(gorocksdb.NewLRUCache(blockCacheSize))
 
 	if writeBufferSize <= 0 {
 		writeBufferSize = DefaultWriteBufferSize
@@ -313,7 +313,7 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	opts.SetWriteBufferSize(writeBufferSize)
 	opts.SetBlockBasedTableFactory(bbto)
 
-	opts.SetCompactionStyle(rocksdb.LevelCompactionStyle)
+	opts.SetCompactionStyle(gorocksdb.LevelCompactionStyle)
 	// use maximum 1024M for L1
 	opts.SetMaxBytesForLevelBase(1024 << 20)
 	opts.SetMaxBytesForLevelMultiplier(10)
@@ -324,7 +324,7 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	return opts
 }
 
-func NewDBOptions() *rocksdb.Options {
+func NewDBOptions() *gorocksdb.Options {
 	// https://github.com/facebook/rocksdb/blob/master/include/rocksdb/options.h
 	// create_if_missing
 	// create_missing_column_families
@@ -412,7 +412,7 @@ func NewDBOptions() *rocksdb.Options {
 	// manual_wal_flush: default false, If true WAL is not flushed automatically after each write. Instead it relies on manual invocation of FlushWAL to write the WAL buffer to its file.
 	// TODO add dump_malloc_stats
 
-	opts := rocksdb.NewDefaultOptions()
+	opts := gorocksdb.NewDefaultOptions()
 	setDefault(opts)
 
 	opts.SetCreateIfMissing(true)
@@ -421,7 +421,7 @@ func NewDBOptions() *rocksdb.Options {
 	return opts
 }
 
-func NewSecondary(master, secondary string, opts *rocksdb.Options, cfOpts CFOptions) (rdb *RDB, err error) {
+func NewSecondary(master, secondary string, opts *gorocksdb.Options, cfOpts CFOptions) (rdb *RDB, err error) {
 	if opts == nil {
 		opts = NewDBOptions()
 	}
@@ -432,7 +432,7 @@ func NewSecondary(master, secondary string, opts *rocksdb.Options, cfOpts CFOpti
 
 	var cfsDB []string
 	if Exist(master) {
-		if cfsDB, err = rocksdb.ListColumnFamilies(opts, master); err != nil {
+		if cfsDB, err = gorocksdb.ListColumnFamilies(opts, master); err != nil {
 			return nil, err
 		}
 	}
@@ -461,9 +461,9 @@ func NewSecondary(master, secondary string, opts *rocksdb.Options, cfOpts CFOpti
 		}
 	}()
 
-	var handles []*rocksdb.ColumnFamilyHandle
+	var handles []*gorocksdb.ColumnFamilyHandle
 
-	if rdb.DB, handles, err = rocksdb.OpenDbAsSecondaryColumnFamilies(opts, master, secondary, keys, values); err != nil {
+	if rdb.DB, handles, err = gorocksdb.OpenDbAsSecondaryColumnFamilies(opts, master, secondary, keys, values); err != nil {
 		return rdb, err
 	}
 	rdb.CFHs = make(CFHandles, len(keys))
@@ -474,7 +474,7 @@ func NewSecondary(master, secondary string, opts *rocksdb.Options, cfOpts CFOpti
 }
 
 // New if fn does not exist when opening, CreateIfMissing could be set to avoid opening error
-func New(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb *RDB, err error) {
+func New(fn string, opts *gorocksdb.Options, cfOpts CFOptions, readonly bool) (rdb *RDB, err error) {
 	if opts == nil {
 		opts = NewDBOptions()
 	}
@@ -485,7 +485,7 @@ func New(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb
 
 	var cfsDB []string
 	if Exist(fn) {
-		if cfsDB, err = rocksdb.ListColumnFamilies(opts, fn); err != nil {
+		if cfsDB, err = gorocksdb.ListColumnFamilies(opts, fn); err != nil {
 			return nil, err
 		}
 	}
@@ -513,13 +513,13 @@ func New(fn string, opts *rocksdb.Options, cfOpts CFOptions, readonly bool) (rdb
 		}
 	}()
 
-	var handles []*rocksdb.ColumnFamilyHandle
+	var handles []*gorocksdb.ColumnFamilyHandle
 	if readonly {
-		if rdb.DB, handles, err = rocksdb.OpenDbForReadOnlyColumnFamilies(opts, fn, keys, values, false); err != nil {
+		if rdb.DB, handles, err = gorocksdb.OpenDbForReadOnlyColumnFamilies(opts, fn, keys, values, false); err != nil {
 			return rdb, err
 		}
 	} else {
-		if rdb.DB, handles, err = rocksdb.OpenDbColumnFamilies(opts, fn, keys, values); err != nil {
+		if rdb.DB, handles, err = gorocksdb.OpenDbColumnFamilies(opts, fn, keys, values); err != nil {
 			return rdb, err
 		}
 	}
@@ -534,7 +534,7 @@ func (rdb *RDB) GetProperty(name Property) string {
 	return rdb.DB.GetProperty(fmt.Sprintf("%s%s", rocksdbPrefix, name))
 }
 
-func (rdb *RDB) GetPropertyCF(name Property, cf *rocksdb.ColumnFamilyHandle) string {
+func (rdb *RDB) GetPropertyCF(name Property, cf *gorocksdb.ColumnFamilyHandle) string {
 	return rdb.DB.GetPropertyCF(fmt.Sprintf("%s%s", rocksdbPrefix, name), cf)
 }
 
@@ -546,8 +546,8 @@ func (rdb *RDB) Flush() error {
 	return rdb.DB.Flush(DefaultFlushOption)
 }
 
-func (rdb *RDB) CompactCF(cf *rocksdb.ColumnFamilyHandle) {
-	rdb.DB.CompactRangeCF(cf, rocksdb.Range{})
+func (rdb *RDB) CompactCF(cf *gorocksdb.ColumnFamilyHandle) {
+	rdb.DB.CompactRangeCF(cf, gorocksdb.Range{})
 }
 
 func (rdb *RDB) Backup(fn string) error {
@@ -570,8 +570,8 @@ func PurgeOldBackups(fn string, numBackupsToKeep uint32) error {
 	return engine.PurgeOldBackups(numBackupsToKeep)
 }
 
-func GetBackupEngine(fn string) (*rocksdb.BackupEngine, error) {
-	engine, err := rocksdb.OpenBackupEngine(DefaultDBOption, fn)
+func GetBackupEngine(fn string) (*gorocksdb.BackupEngine, error) {
+	engine, err := gorocksdb.OpenBackupEngine(DefaultDBOption, fn)
 	if err != nil {
 		return nil, fmt.Errorf("OpenBackupEngine fail: %s", err)
 	}
@@ -614,7 +614,7 @@ func GetBackupInfo(fn string) ([]*BackupInfo, error) {
 	return res, nil
 }
 
-func (rdb *RDB) KeyExist(cf *rocksdb.ColumnFamilyHandle, key []byte) bool {
+func (rdb *RDB) KeyExist(cf *gorocksdb.ColumnFamilyHandle, key []byte) bool {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 	iter.Seek(key)
@@ -628,7 +628,7 @@ func (rdb *RDB) KeyExist(cf *rocksdb.ColumnFamilyHandle, key []byte) bool {
 
 // SeekForPrevKey return the key less than or equal to given key
 // return nil if no matching key found
-func (rdb *RDB) SeekForPrevKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byte {
+func (rdb *RDB) SeekForPrevKey(cf *gorocksdb.ColumnFamilyHandle, key []byte) []byte {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 	iter.SeekForPrev(key)
@@ -639,7 +639,7 @@ func (rdb *RDB) SeekForPrevKey(cf *rocksdb.ColumnFamilyHandle, key []byte) []byt
 }
 
 // SeekKeyUpperBound return the first key >= key and the last key <= upper bound
-func (rdb *RDB) SeekKeyUpperBound(cf *rocksdb.ColumnFamilyHandle, key, upperBound []byte) (first, last []byte) {
+func (rdb *RDB) SeekKeyUpperBound(cf *gorocksdb.ColumnFamilyHandle, key, upperBound []byte) (first, last []byte) {
 	opt := *DefaultReadOption
 	opt.SetIterateUpperBound(upperBound)
 
@@ -660,19 +660,19 @@ func (rdb *RDB) SeekKeyUpperBound(cf *rocksdb.ColumnFamilyHandle, key, upperBoun
 	return first, last
 }
 
-func (rdb *RDB) NewWriteBatch() *rocksdb.WriteBatch {
-	return rocksdb.NewWriteBatch()
+func (rdb *RDB) NewWriteBatch() *gorocksdb.WriteBatch {
+	return gorocksdb.NewWriteBatch()
 }
 
-func (rdb *RDB) DeleteCF(cf *rocksdb.ColumnFamilyHandle, key []byte) error {
+func (rdb *RDB) DeleteCF(cf *gorocksdb.ColumnFamilyHandle, key []byte) error {
 	return rdb.DB.DeleteCF(rdb.WriteOpts, cf, key)
 }
 
-func (rdb *RDB) PutCF(cf *rocksdb.ColumnFamilyHandle, key, value []byte) error {
+func (rdb *RDB) PutCF(cf *gorocksdb.ColumnFamilyHandle, key, value []byte) error {
 	return rdb.DB.PutCF(rdb.WriteOpts, cf, key, value)
 }
 
-func (rdb *RDB) GetCF(cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
+func (rdb *RDB) GetCF(cf *gorocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
 	data, err := rdb.DB.GetCF(rdb.ReadOpts, cf, key)
 	if err != nil {
 		return nil, err
@@ -685,7 +685,7 @@ func (rdb *RDB) GetCF(cf *rocksdb.ColumnFamilyHandle, key []byte) ([]byte, error
 	return append([]byte(nil), data.Data()...), nil
 }
 
-func (rdb *RDB) WriteTo(cf *rocksdb.ColumnFamilyHandle, key []byte, w io.Writer) error {
+func (rdb *RDB) WriteTo(cf *gorocksdb.ColumnFamilyHandle, key []byte, w io.Writer) error {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 	iter.Seek(key)
@@ -705,7 +705,7 @@ func (rdb *RDB) WriteTo(cf *rocksdb.ColumnFamilyHandle, key []byte, w io.Writer)
 	return nil
 }
 
-func NewKVJson(iter *rocksdb.Iterator) *KVJson {
+func NewKVJson(iter *gorocksdb.Iterator) *KVJson {
 	return &KVJson{
 		Key:   string(iter.Key().Data()),
 		Value: json.RawMessage(iter.Value().Data()),
@@ -817,7 +817,7 @@ func (rdb *RDB) GetRangeByKey(opt *RangeOption, w io.Writer) {
 		elems = make([]*KVJson, 0)
 	}
 
-	rdb.RangeForeach(opt, func(iter *rocksdb.Iterator) {
+	rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
 		elem := NewKVJson(iter)
 		if opt.streamOutput {
 			if err = enc.Encode(elem); err != nil {
@@ -848,7 +848,7 @@ func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) {
 		elems = make([]*KVJson, 0)
 	}
 
-	rdb.RangeForeachByTS(opt, f, func(iter *rocksdb.Iterator) {
+	rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
 		elem := NewKVJson(iter)
 		if opt.streamOutput {
 			if err = enc.Encode(elem); err != nil {
@@ -871,7 +871,7 @@ func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) {
 func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 	f := GenHijackTsInKeyByIndex(opt.TSFieldIndex, []byte(opt.KeySeparator))
 	cf := rdb.CFHs[opt.CF]
-	rdb.RangeForeachByTS(opt, f, func(iter *rocksdb.Iterator) {
+	rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
 		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
 			logger.LogW("DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
@@ -883,7 +883,7 @@ func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 
 func (rdb *RDB) DeleteRangeByKey(opt *RangeOption) {
 	cf := rdb.CFHs[opt.CF]
-	rdb.RangeForeach(opt, func(iter *rocksdb.Iterator) {
+	rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
 		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
 			logger.LogW("DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
