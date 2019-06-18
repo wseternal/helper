@@ -33,7 +33,6 @@ type RDB struct {
 	WriteOpts *gorocksdb.WriteOptions
 	ReadOpts  *gorocksdb.ReadOptions
 
-	isSecondary   bool
 	secondaryPath string
 }
 
