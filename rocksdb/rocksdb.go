@@ -10,7 +10,7 @@ import (
 
 	"github.com/wseternal/helper/logger"
 
-	gorocksdb "github.com/wseternal/gorocksdb"
+	"github.com/wseternal/gorocksdb"
 )
 
 type BackupInfo struct {
