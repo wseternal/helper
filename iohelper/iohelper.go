@@ -3,6 +3,7 @@ package iohelper
 import (
 	"bytes"
 	"crypto"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"sync"
@@ -54,11 +55,24 @@ func HashsumFromFile(fn string, h crypto.Hash) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	sum := filter.NewHash(h.New(), true)
+	sum := filter.NewHash(h.New(), false)
 	src.Chain(sum)
-	snk := sink.NewDiscard()
+	snk := sink.NewBuffer()
 	if _, err = pump.All(src, snk, true); err != nil {
 		return nil, err
 	}
-	return sum.Sum(nil), nil
+	return snk.Bytes(), nil
+}
+
+
+func ValidFileSum(fn string, expectSum string, hash crypto.Hash) error {
+	data, err := HashsumFromFile(fn, hash)
+	if err != nil {
+		return err
+	}
+	sum := hex.EncodeToString(data)
+	if sum !=  expectSum {
+		return fmt.Errorf("computed sum: %s <> expected sum: %s", sum, expectSum)
+	}
+	return nil
 }

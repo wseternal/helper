@@ -43,7 +43,7 @@ func TestOnTheFlyHashFilter(t *testing.T) {
 	out := string(snk.Bytes())
 	fmt.Printf("%v -> on-the-fly sha256sum -> ToHex -> %v\n", input, out)
 	if out != sha256SumString {
-		t.Errorf("computed sum %v is not as expected: %v\n", out)
+		t.Errorf("computed sum %v is not as expected: %v\n", out, sha256SumString)
 	}
 }
 
