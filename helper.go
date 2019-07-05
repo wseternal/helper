@@ -98,10 +98,10 @@ func IsFile(path string) bool {
 func FileSize(path string) (int64, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	if stat.IsDir() {
-		return 0, fmt.Errorf("%s is a directory", path)
+		return -2, fmt.Errorf("%s is a directory", path)
 	}
 	return stat.Size(), nil
 }
