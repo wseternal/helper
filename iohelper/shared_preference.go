@@ -17,10 +17,17 @@ type IntElem struct {
 	Value int    `xml:"value,attr"`
 }
 
+type BoolElem struct {
+	Name  string `xml:"name,attr"`
+	Value bool    `xml:"value,attr"`
+}
+
+
 type SharedPreference struct {
 	XMLName xml.Name   `xml:"map"`
 	SElems  []*StrElem `xml:"string"`
 	IElems  []*IntElem `xml:"int"`
+	BElems []*BoolElem `xml:"boolean"`
 }
 
 var (
@@ -110,6 +117,32 @@ func (sp *SharedPreference) PutInt(name string, val int) {
 	}
 	if !found {
 		sp.IElems = append(sp.IElems, &IntElem{
+			Name:  name,
+			Value: val,
+		})
+	}
+}
+
+func (sp *SharedPreference) GetBool(name string) *bool {
+	for _, elem := range sp.BElems {
+		if elem.Name == name {
+			return &elem.Value
+		}
+	}
+	return nil
+}
+
+func (sp *SharedPreference) PutBool(name string, val bool) {
+	found := false
+	for _, elem := range sp.BElems {
+		if elem.Name == name {
+			elem.Value = val
+			found = true
+			break
+		}
+	}
+	if !found {
+		sp.BElems = append(sp.BElems, &BoolElem{
 			Name:  name,
 			Value: val,
 		})
