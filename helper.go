@@ -106,6 +106,29 @@ func FileSize(path string) (int64, error) {
 	return stat.Size(), nil
 }
 
+func FindFiles(topdir, pattern string, filter func(fn string, pattern string) bool) (res []string, err error) {
+	if !helper.IsDir(topdir) {
+		return nil, fmt.Errorf("invalid top directory %s", topdir)
+	}
+	var info []os.FileInfo
+	if info, err = ioutil.ReadDir(topdir); err != nil {
+		return nil, fmt.Errorf("list directory content of %s failed, %s", topdir, err)
+	}
+	res = make([]string, 0)
+	for _, elem := range info {
+		if elem.IsDir() {
+			continue
+		}
+		if filter(elem.Name(), pattern) {
+			res = append(res, elem.Name())
+		}
+	}
+	if len(res) > 0 {
+		sort.Strings(res)
+	}
+	return res, nil
+}
+
 func testFileMode(path string, m os.FileMode, followSymlink bool) (bool, error) {
 	var finfo os.FileInfo
 	var err error
