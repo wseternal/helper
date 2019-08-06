@@ -3,8 +3,10 @@ package iohelper
 import (
 	"bytes"
 	"crypto"
+	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"io/ioutil"
 	"sync"
 
@@ -64,7 +66,6 @@ func HashsumFromFile(fn string, h crypto.Hash) ([]byte, error) {
 	return snk.Bytes(), nil
 }
 
-
 func ValidFileSum(fn string, expectSum string, hash crypto.Hash) error {
 	data, err := HashsumFromFile(fn, hash)
 	if err != nil {
@@ -75,4 +76,53 @@ func ValidFileSum(fn string, expectSum string, hash crypto.Hash) error {
 		return fmt.Errorf("computed sum: %s <> expected sum: %s", sum, expectSum)
 	}
 	return nil
+}
+
+func HttpDownload(url string, dst string, expectedSum string) error {
+	var err error
+	if err = ValidFileSum(dst, expectedSum, crypto.MD5); err == nil {
+		fmt.Printf("%s (%s) is already downloaded", dst, expectedSum)
+		return nil
+	}
+	var resp *http.Response
+	resp, err = http.Get(url)
+	if err != nil {
+		return fmt.Errorf("http get %s failed, %s", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("http get %s: %d %s", url, resp.StatusCode, resp.Status)
+	}
+	src := source.New(resp.Body)
+	h := filter.NewHash(md5.New(), true)
+	src.Chain(h)
+
+	snk, err := sink.NewFile(dst)
+	if err != nil {
+		return fmt.Errorf("create download destination file %s failed, %s\n", dst, err)
+	}
+	defer snk.Close()
+
+	if _, err = pump.All(src, snk, false); err != nil {
+		return fmt.Errorf("save to file %s failed, %s\n", dst, err)
+	}
+	sum := hex.EncodeToString(h.Sum(nil))
+	if len(expectedSum) > 0 && sum != expectedSum {
+		return fmt.Errorf("invalid sum %s for file %s, expect %s", sum, dst, expectedSum)
+	}
+	return nil
+}
+
+func CopyFile(dst, src string) (int, error) {
+	source, err := source.NewFile(src)
+	if err != nil {
+		return 0, err
+	}
+	var snk *sink.Sink
+	snk, err = sink.NewFile(dst)
+	if err != nil {
+		return 0, err
+	}
+	return pump.All(source, snk, true)
 }
