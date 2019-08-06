@@ -3,20 +3,20 @@ package helper
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
 	"reflect"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
 	"path/filepath"
-
-	"github.com/wseternal/helper/logger"
 )
 
 type SigAction struct {
@@ -24,7 +24,6 @@ type SigAction struct {
 }
 
 var (
-	l             *log.Logger
 	muxSigActions sync.Mutex
 	sigActions    map[syscall.Signal]*SigAction
 	sigChan       chan os.Signal
@@ -45,7 +44,6 @@ const (
 )
 
 func init() {
-	l = log.New(os.Stderr, "", log.Ldate|log.Ltime)
 }
 
 func Recover(msg string, stackTrace, panic bool) {
@@ -55,9 +53,9 @@ func Recover(msg string, stackTrace, panic bool) {
 		}
 		str := fmt.Sprintf("recover: %s found exception: %s", msg, except)
 		if panic {
-			l.Panic(str)
+			log.Panic(str)
 		} else {
-			l.Print(str)
+			fmt.Fprintf(os.Stderr, str)
 		}
 	}
 }
@@ -72,7 +70,6 @@ func ShellCommand(format string, arg ...interface{}) *exec.Cmd {
 	} else {
 		cmd = format
 	}
-	logger.LogD("ShellCommand: %s\n", cmd)
 	c := exec.Command("sh", "-c", cmd)
 	c.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
@@ -107,7 +104,7 @@ func FileSize(path string) (int64, error) {
 }
 
 func FindFiles(topdir, pattern string, filter func(fn string, pattern string) bool) (res []string, err error) {
-	if !helper.IsDir(topdir) {
+	if !IsDir(topdir) {
 		return nil, fmt.Errorf("invalid top directory %s", topdir)
 	}
 	var info []os.FileInfo
@@ -174,7 +171,7 @@ func signalCaptureThread() {
 		select {
 		case s := <-sigChan:
 			sig, _ := s.(syscall.Signal)
-			logger.LogI("invoking actions for signal %d (%s) for %d subscribers\n", sig, s.String(), len(sigActions[sig].Funcs))
+			fmt.Printf("invoking actions for signal %d (%s) for %d subscribers\n", sig, s.String(), len(sigActions[sig].Funcs))
 			for _, f := range sigActions[sig].Funcs {
 				f()
 			}

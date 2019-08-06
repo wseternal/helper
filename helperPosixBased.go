@@ -4,7 +4,7 @@ package helper
 
 import (
 	"fmt"
-	"github.com/wseternal/helper/logger"
+	"os"
 	"os/user"
 	"strconv"
 	"syscall"
@@ -24,7 +24,6 @@ func SetProcessUser(userName string) error {
 	if err != nil {
 		return err
 	}
-	logger.LogD("set process user: find user %s: %v\n", userName, u)
 	uid, err := strconv.Atoi(u.Uid)
 	if err != nil {
 		return fmt.Errorf("invalid uid %s found for user %s", u.Uid, userName)
@@ -32,13 +31,11 @@ func SetProcessUser(userName string) error {
 	if syscall.Getuid() == uid {
 		return nil
 	}
-	logger.LogD("find uid %d for user %s\n", uid, userName)
 	if err = syscall.Setuid(uid); err != nil {
-		l.Printf("change uid to %s(%s) failed: %s, trying use CGO setuid\n", userName, u.Uid, err)
+		fmt.Fprintf(os.Stderr, "change uid to %s(%s) failed: %s, trying use CGO setuid\n", userName, u.Uid, err)
 		if err = Setuid((uid)); err != nil {
 			return fmt.Errorf("CGO setuid %d failed, erro: %s, quit...", uid, err)
 		}
 	}
-	logger.LogI("set process user to %s successfully", userName)
 	return nil
 }
