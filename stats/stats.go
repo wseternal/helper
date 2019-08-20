@@ -17,14 +17,16 @@ const (
 )
 
 const (
-	// pollThreshHold in unit of second
-	pollThreshHold   = time.Duration(10)
+	// checkThreshHold in unit of second, if duration of Term beyond the threshold,
+	// use timer to trigger the reset, otherwise, checking the elapsed each time when
+	// the counter is changed
+	checkThreshHold  = time.Duration(10)
 	channelBufferNum = 10
 )
 
 // Statistic is collected according to corresponding period.
 // A Counter object may have multiple Statistic objects.
-// when duration less than pollThreshHold, it is checked
+// when duration less than checkThreshHold, it is checked
 // every time when a counter message arrives.
 type Statistic struct {
 	// total: how many times the corresponding counter event occurred
@@ -92,7 +94,7 @@ func (counter *Counter) counterMessageHandler() {
 
 	counter.StartTime = time.Now().Unix()
 	for _, c := range counter.Terms {
-		if c.Duration > pollThreshHold {
+		if c.Duration > checkThreshHold {
 			count := c
 			time.AfterFunc(count.Duration*time.Second, func() {
 				counter.reset <- count
@@ -105,7 +107,7 @@ func (counter *Counter) counterMessageHandler() {
 		select {
 		case msg := <-counter.msg:
 			for k, c := range counter.Terms {
-				if k <= pollThreshHold {
+				if k <= checkThreshHold {
 					elapsed = time.Duration(msg.TS - c.TSStart)
 					if elapsed > c.Duration {
 						c.Reset()
