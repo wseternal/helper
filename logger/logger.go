@@ -163,22 +163,3 @@ func SetLogger(level LogLevel, l *log.Logger) {
 	}
 	loggers[level] = l
 }
-
-func Compact(obj interface{}, maxLen int) string {
-	msg := fmt.Sprintf("%+v", obj)
-	return CompactString(msg, maxLen)
-}
-
-func CompactString(msg string, maxLen int) string {
-	if maxLen <= 0 {
-		return msg
-	}
-	l := len(msg)
-	if l <= maxLen || l < 5 {
-		// at least, we need string lenght >= 5, so that it can
-		// show 1st letter + "..." + last letter
-		return msg
-	}
-	cnt := (maxLen - 3) / 2
-	return fmt.Sprintf("%s...%s", msg[0:cnt], msg[l-cnt:l])
-}
