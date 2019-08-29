@@ -5,14 +5,15 @@ package sys
 import (
 	"bytes"
 	"fmt"
-	"github.com/wseternal/helper"
-	"github.com/wseternal/helper/iohelper"
-	"github.com/wseternal/helper/logger"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/iohelper"
+	"github.com/wseternal/helper/logger"
 )
 
 const (
@@ -172,4 +173,16 @@ sysnet:
 	}
 out:
 	return strings.Replace(AllZeroMAC, ":", "", -1)
+}
+
+func GetFileInfo(fn string) (*syscall.Stat_t, error) {
+	info, err := os.Stat(fn)
+	if err != nil {
+		return nil, err
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if ok {
+		return stat, nil
+	}
+	return nil, fmt.Errorf("not *syscall.Stat_t, it's %+v %[1]T", info.Sys())
 }
