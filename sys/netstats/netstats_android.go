@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"helper"
-	"helper/logger"
 	"strings"
 	"time"
+
+	"github.com/wseternal/helper"
+	"github.com/wseternal/helper/logger"
 )
 
 type Bucket struct {
@@ -75,23 +76,34 @@ func GetMobileDataUsage() (res []*Bucket, err error) {
 				state = StateMobileTypeFound
 			}
 		case StateMobileTypeFound:
-			if !strings.HasPrefix(l, "bucketStart=") {
+			if !(strings.HasPrefix(l, "bucketStart=") || strings.HasPrefix(l, "st=")) {
 				break
 			}
 			state = StateBucketCollecting
 			res = make([]*Bucket, 0)
 			fallthrough
 		case StateBucketCollecting:
-			if !strings.HasPrefix(l, "bucketStart=") {
+			if !(strings.HasPrefix(l, "bucketStart=") || strings.HasPrefix(l, "st=")) {
 				state = StateBucketCollectingEnd
 				break
 			}
 			bu := &Bucket{}
-			scanned, err = fmt.Sscanf(l, "bucketStart=%d activeTime=%d rxBytes=%d rxPackets=%d txBytes=%d txPackets=%d",
-				&bu.Start, &bu.Active, &bu.RxBytes, &bu.RxPackets, &bu.TxBytes, &bu.TxPackets)
-			if scanned != 6 {
-				logger.LogW("parse bucket line %s failed, scanned: %d %s", l, scanned, err)
-				break
+			if strings.HasPrefix(l, "bucketStart=") {
+				scanned, err = fmt.Sscanf(l, "bucketStart=%d activeTime=%d rxBytes=%d rxPackets=%d txBytes=%d txPackets=%d",
+					&bu.Start, &bu.Active, &bu.RxBytes, &bu.RxPackets, &bu.TxBytes, &bu.TxPackets)
+				if scanned != 6 {
+					logger.LogW("parse bucket line %s failed, scanned: %d %s", l, scanned, err)
+					break
+				}
+			} else {
+				scanned, err = fmt.Sscanf(l, "st=%d rb=%d rp=%d tb=%d tp=%d",
+					&bu.Start, &bu.RxBytes, &bu.RxPackets, &bu.TxBytes, &bu.TxPackets)
+				if scanned != 5 {
+					logger.LogW("parse bucket line %s failed, scanned: %d %s", l, scanned, err)
+					break
+				}
+				bu.Start = bu.Start * 1000
+				bu.Active = 3600000
 			}
 			res = append(res, bu)
 		}
