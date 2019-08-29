@@ -10,7 +10,7 @@ import (
 	"github.com/wseternal/helper/logger"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -56,8 +56,27 @@ func GetNetStatistics(dev string) *NetStatistics {
 	}
 }
 
+func SysNetDevExist(name string) error {
+	if !helper.IsDir(SysFSNet) {
+		return fmt.Errorf("%s is not existed", SysFSNet)
+	}
+	fp := filepath.Join(SysFSNet, name)
+	if !helper.IsSymbolLink(fp) {
+		return fmt.Errorf("%s is not a symbol link", fp)
+	}
+	var err error
+	var link string
+	if link, err = os.Readlink(fp); err != nil {
+		return fmt.Errorf("follow sysnet link %s failed, %s", fp, err)
+	}
+	if !helper.IsDir(filepath.Join(SysFSNet, link)) {
+		return fmt.Errorf("%s is not a valid directory", link)
+	}
+	return nil
+}
+
 func GetSysNetDevOperState(dev string) string {
-	return iohelper.CatTextFile(path.Join(SysFSNet, dev, "operstate"), OperStateUnknown)
+	return iohelper.CatTextFile(filepath.Join(SysFSNet, dev, "operstate"), OperStateUnknown)
 }
 
 func GetAllNetStatistics(operstate string) []*NetStatistics {
@@ -71,7 +90,7 @@ func GetAllNetStatistics(operstate string) []*NetStatistics {
 		if (entry.Mode() & os.ModeSymlink) == 0 {
 			continue
 		}
-		state := iohelper.CatTextFile(path.Join(SysFSNet, entry.Name(), "operstate"), OperStateUnknown)
+		state := iohelper.CatTextFile(filepath.Join(SysFSNet, entry.Name(), "operstate"), OperStateUnknown)
 		if state == operstate {
 			if stat := GetNetStatistics(entry.Name()); stat != nil {
 				res = append(res, stat)
@@ -87,7 +106,7 @@ func GetSysNetAddr(name string, allowVirtual bool) (string, error) {
 	if !helper.IsDir(SysFSNet) {
 		return addr, fmt.Errorf("%s is not existed", SysFSNet)
 	}
-	fp := path.Join(SysFSNet, name)
+	fp := filepath.Join(SysFSNet, name)
 	if !helper.IsSymbolLink(fp) {
 		return addr, fmt.Errorf("%s is not a symbol link", fp)
 	}
@@ -98,7 +117,7 @@ func GetSysNetAddr(name string, allowVirtual bool) (string, error) {
 	if strings.Contains(link, "virtual") && !allowVirtual {
 		return addr, fmt.Errorf("ignore virtual device %s under sysnet\n", name)
 	}
-	fp = path.Join(SysFSNet, name, "address")
+	fp = filepath.Join(SysFSNet, name, "address")
 	return strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1), nil
 }
 
@@ -120,7 +139,7 @@ func GetMachineID() string {
 		if (elem.Mode() & os.ModeSymlink) == 0 {
 			continue
 		}
-		fp = path.Join(SysFSIEEE80211, elem.Name(), "macaddress")
+		fp = filepath.Join(SysFSIEEE80211, elem.Name(), "macaddress")
 		if !helper.IsFile(fp) {
 			continue
 		}
@@ -140,7 +159,7 @@ sysnet:
 		if (elem.Mode() & os.ModeSymlink) == 0 {
 			continue
 		}
-		fp = path.Join(SysFSNet, elem.Name())
+		fp = filepath.Join(SysFSNet, elem.Name())
 		if link, err = os.Readlink(fp); err != nil {
 			goto out
 		}
@@ -148,7 +167,7 @@ sysnet:
 			logger.LogD("GetMachineID: ignore virtual device %s under sysnet\n", elem.Name())
 			continue
 		}
-		fp = path.Join(SysFSNet, elem.Name(), "address")
+		fp = filepath.Join(SysFSNet, elem.Name(), "address")
 		return strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1)
 	}
 out:
