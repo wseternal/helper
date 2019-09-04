@@ -92,13 +92,17 @@ func (c *APIContext) IsAPIDebug() bool {
 	return c.Get(ContextKeyDebug) != nil
 }
 
-func (c *APIContext) GetLastAPIReqObj() interface{} {
-	return c.Get(ContextKeyDebugLastReq)
+func (c *APIContext) GetRequestObject() interface{} {
+	return c.Get(ContextKeyReqObj)
+}
+
+func (c *APIContext) GetRequestClient() interface{} {
+	return c.Get(ContextKeyReqClient)
 }
 
 func (c *APIContext) GetLastAPIResponse() []byte {
 	if c.Get(ContextKeyDebug) != nil {
-		if data := c.Get(ContextKeyDebugLastResData); data != nil {
+		if data := c.Get(ContextKeyDebugResData); data != nil {
 			return data.([]byte)
 		}
 	}

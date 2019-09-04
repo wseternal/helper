@@ -47,9 +47,8 @@ const (
 	ContextKeyDebug     = "__api_debug"
 
 	//following context key will be set if debug
-	ContextKeyDebugLastResData = "__api_debug_last_response_data"
-	ContextKeyDebugLastReq     = "__api_debug_last_req"
-	ContextKeyDebugLastAPI     = "__api_debug_last_api"
+	ContextKeyDebugResData = "__api_debug_response_data"
+	ContextKeyDebugAPI     = "__api_debug_api"
 )
 
 var (
@@ -63,6 +62,7 @@ func init() {
 	apis.elem = make(map[string]*API)
 }
 
+// request type must be type to a valid struct
 // response type shall be type to a valid struct ( or struct ptr)
 func RegisterAPI(name string, f NewRequestFunc, resCheckF ResponseSanityCheckFunc, reqType, responseType reflect.Type) (*API, error) {
 	if responseType == nil || helper.ValidStructType(responseType, nil, 1) != nil {
@@ -97,6 +97,7 @@ func GetAPI(name string) *API {
 	return apis.elem[name]
 }
 
+// ContextKeyReqObj must be set if RequestObjectType is not nil
 func (api *API) Do(ctx *APIContext) (interface{}, error) {
 	var err error
 	// check request object
@@ -141,9 +142,8 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 
 	if ctx.IsAPIDebug() {
 		data, _ := ioutil.ReadAll(res.Body)
-		ctx.Set(ContextKeyDebugLastAPI, api.Name)
-		ctx.Set(ContextKeyDebugLastReq, reqObj)
-		ctx.Set(ContextKeyDebugLastResData, data)
+		ctx.Set(ContextKeyDebugAPI, api.Name)
+		ctx.Set(ContextKeyDebugResData, data)
 
 		defer func() {
 			if err == nil {
@@ -172,6 +172,25 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 	}
 
 	return v.Interface(), nil
+}
+
+func DoAPI(ctx *APIContext, name string, reqObj interface{}) (interface{}, error) {
+	api := GetAPI(name)
+	if api == nil {
+		return nil, fmt.Errorf("API %s is not registerd", name)
+	}
+	if ctx == nil {
+		ctx = NewAPIContext(nil)
+	}
+	ctx.Set(ContextKeyReqObj, reqObj)
+	res, err := api.Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if ctx.IsAPIDebug() {
+		fmt.Printf("API %s invoked successfully, spent %v\n", name, ctx.Get(ContextKeySpent))
+	}
+	return res, nil
 }
 
 // return http request path fields separated by "/"

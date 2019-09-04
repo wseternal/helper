@@ -304,7 +304,7 @@ func ValidStructType(obj interface{}, expected reflect.Type, dereference int) er
 		return errors.New("nil object")
 	}
 	if expected != nil && expected.Kind() != reflect.Struct {
-		return errors.New("parameter 'expected' must be a valid struct type")
+		return errors.New("parameter must be a valid struct type")
 	}
 	tmp := reflect.TypeOf(obj)
 	count := dereference
