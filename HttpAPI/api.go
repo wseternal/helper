@@ -35,12 +35,17 @@ type API struct {
 	Name                                  string
 }
 
+type ErrorCallback func(ctx *APIContext) CallbackResult
+type CallbackResult int
+
 const (
 	ContextKeyRequestDesc = "__api_request_desc"
 	ContextKeyRequestID   = "__api_request_id"
 	ContextKeyRequestPath = "__api_request_path"
 	ContextKeyRequestForm = "__api_request_form"
 
+	ContextKeyErrorCallback = "__api_error_callback"
+	ContextKeyRetryCount = "__api_retry_count"
 	ContextKeyReqObj    = "__api_req_obj"
 	ContextKeyReqClient = "__api_req_client"
 	ContextKeySpent     = "__api_spent"
@@ -49,6 +54,11 @@ const (
 	//following context key will be set if debug
 	ContextKeyDebugResData = "__api_debug_response_data"
 	ContextKeyDebugAPI     = "__api_debug_api"
+)
+
+const (
+	CallbackResultAbort CallbackResult = iota
+	CallbackResultRetry
 )
 
 var (
@@ -97,16 +107,9 @@ func GetAPI(name string) *API {
 	return apis.elem[name]
 }
 
-// ContextKeyReqObj must be set if RequestObjectType is not nil
-func (api *API) Do(ctx *APIContext) (interface{}, error) {
+func (api *API) _do(ctx *APIContext) (interface{}, error) {
 	var err error
-	// check request object
-	reqObj := ctx.Get(ContextKeyReqObj)
-	if api.RequestObjectType != nil {
-		if err = helper.ValidStructType(reqObj, api.RequestObjectType, 1); err != nil {
-			return nil, fmt.Errorf("invalid request obj: %v(%[1]T), %s", reqObj, err)
-		}
-	}
+
 	// generate the request and use given/default client to send out request
 	var req *http.Request
 	var res *http.Response
@@ -118,6 +121,7 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 			return nil, fmt.Errorf("request client in context is not a valid type *RequestClient, it's %T", ctx.Get(ContextKeyReqClient))
 		}
 	}
+	reqObj := ctx.GetRequestClient()
 	if req, err = api.ReqF(ctx); err != nil {
 		return nil, err
 	}
@@ -139,7 +143,6 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 		t = t.Elem()
 	}
 	v = reflect.New(t)
-
 	if ctx.IsAPIDebug() {
 		data, _ := ioutil.ReadAll(res.Body)
 		ctx.Set(ContextKeyDebugAPI, api.Name)
@@ -170,8 +173,48 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 			return nil, err
 		}
 	}
-
 	return v.Interface(), nil
+}
+
+// ContextKeyReqObj must be set if RequestObjectType is not nil
+func (api *API) Do(ctx *APIContext) (interface{}, error) {
+	var err error
+	// check request object
+	reqObj := ctx.GetRequestObject()
+	if api.RequestObjectType != nil {
+		if err = helper.ValidStructType(reqObj, api.RequestObjectType, 1); err != nil {
+			return nil, fmt.Errorf("invalid request obj: %v(%[1]T), %s", reqObj, err)
+		}
+	}
+
+	var res interface{}
+
+	var tried int64 = 0
+	maxRetry := ctx.GetRetryCount()
+	for {
+		tried++
+		res, err = api._do(ctx)
+		// no error occurred, break
+		if err == nil {
+			break
+		}
+		fmt.Fprintf(os.Stderr, "API(%s).Do failed, %s\n", api.Name, err)
+		// error occurred, invoke error callback if has one
+		if cb :=ctx.GetErrorCallback(); cb != nil {
+			cbRes := cb(ctx)
+			if cbRes != CallbackResultRetry {
+				break
+			}
+			fmt.Printf("API(%s).Do: erorr callback result is CallbackResultRetry, retry...\n", api.Name)
+		}
+
+		fmt.Printf("API(%s).Do: tried: %d, max retry: %d\n", api.Name, tried, maxRetry)
+		// check retry count
+		if tried > maxRetry {
+			break
+		}
+	}
+	return res, err
 }
 
 func DoAPI(ctx *APIContext, name string, reqObj interface{}) (interface{}, error) {

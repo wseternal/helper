@@ -17,6 +17,10 @@ type APIContext struct {
 	context.Context
 }
 
+const (
+	DefaultRetryCount = 1
+)
+
 var (
 	apiContextKey = new(int)
 )
@@ -98,6 +102,30 @@ func (c *APIContext) GetRequestObject() interface{} {
 
 func (c *APIContext) GetRequestClient() interface{} {
 	return c.Get(ContextKeyReqClient)
+}
+
+func (c *APIContext) GetErrorCallback() ErrorCallback {
+	v := c.Get(ContextKeyErrorCallback)
+	if v == nil {
+		return nil
+	}
+	return v.(ErrorCallback)
+}
+
+func (c *APIContext) SetRetryCount(val int64)  {
+	c.Set(ContextKeyRetryCount, val)
+}
+
+func (c *APIContext) GetRetryCount() int64 {
+	v := c.Get(ContextKeyRetryCount)
+	if v == nil {
+		return DefaultRetryCount
+	}
+	res, ok := v.(int64)
+	if ok {
+		return res
+	}
+	return DefaultRetryCount
 }
 
 func (c *APIContext) GetLastAPIResponse() []byte {
