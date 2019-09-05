@@ -35,7 +35,7 @@ type API struct {
 	Name                                  string
 }
 
-type ErrorCallback func(ctx *APIContext) CallbackResult
+type ErrorCallback func(ctx *APIContext, err error) CallbackResult
 type CallbackResult int
 
 const (
@@ -45,11 +45,11 @@ const (
 	ContextKeyRequestForm = "__api_request_form"
 
 	ContextKeyErrorCallback = "__api_error_callback"
-	ContextKeyRetryCount = "__api_retry_count"
-	ContextKeyReqObj    = "__api_req_obj"
-	ContextKeyReqClient = "__api_req_client"
-	ContextKeySpent     = "__api_spent"
-	ContextKeyDebug     = "__api_debug"
+	ContextKeyRetryCount    = "__api_retry_count"
+	ContextKeyReqObj        = "__api_req_obj"
+	ContextKeyReqClient     = "__api_req_client"
+	ContextKeySpent         = "__api_spent"
+	ContextKeyDebug         = "__api_debug"
 
 	//following context key will be set if debug
 	ContextKeyDebugResData = "__api_debug_response_data"
@@ -57,8 +57,14 @@ const (
 )
 
 const (
+	// skip left error callbacks, fail the API request without retry
 	CallbackResultAbort CallbackResult = iota
+
+	// skip left error callbacks, retry the API request
 	CallbackResultRetry
+
+	// continue invoke left error callbacks
+	CallbackResultContinue
 )
 
 var (
@@ -200,12 +206,18 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 		}
 		fmt.Fprintf(os.Stderr, "API(%s).Do failed, %s\n", api.Name, err)
 		// error occurred, invoke error callback if has one
-		if cb :=ctx.GetErrorCallback(); cb != nil {
-			cbRes := cb(ctx)
-			if cbRes != CallbackResultRetry {
-				break
+		if cbs := ctx.GetErrorCallback(); cbs != nil {
+			for _, cb := range cbs {
+				cbRes := cb(ctx, err)
+				if cbRes == CallbackResultAbort {
+					fmt.Printf("API(%s).Do erorr callback result is abort, return...\n", api.Name)
+					goto out
+				}
+				if cbRes == CallbackResultRetry {
+					fmt.Printf("API(%s).Do erorr callback result is retry, retrying...\n", api.Name)
+					break
+				}
 			}
-			fmt.Printf("API(%s).Do: erorr callback result is CallbackResultRetry, retry...\n", api.Name)
 		}
 
 		fmt.Printf("API(%s).Do: tried: %d, max retry: %d\n", api.Name, tried, maxRetry)
@@ -214,6 +226,7 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 			break
 		}
 	}
+out:
 	return res, err
 }
 

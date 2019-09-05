@@ -104,15 +104,19 @@ func (c *APIContext) GetRequestClient() interface{} {
 	return c.Get(ContextKeyReqClient)
 }
 
-func (c *APIContext) GetErrorCallback() ErrorCallback {
+func (c *APIContext) GetErrorCallback() []ErrorCallback {
 	v := c.Get(ContextKeyErrorCallback)
 	if v == nil {
 		return nil
 	}
-	return v.(ErrorCallback)
+	return v.([]ErrorCallback)
 }
 
-func (c *APIContext) SetRetryCount(val int64)  {
+func (c *APIContext) SetErrorCallback(cb ...ErrorCallback) {
+	c.Set(ContextKeyErrorCallback, cb)
+}
+
+func (c *APIContext) SetRetryCount(val int64) {
 	c.Set(ContextKeyRetryCount, val)
 }
 
