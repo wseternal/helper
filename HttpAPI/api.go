@@ -232,8 +232,10 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 		if err == nil {
 			break
 		}
+
+		needRetry := false
 		fmt.Fprintf(os.Stderr, "API(%s).Do failed, %s\n", api.Name, err)
-		// error occurred, invoke error callback if has one
+		// error occurred, invoke error callbacks
 		if cbs := ctx.GetErrorCallback(); cbs != nil {
 			for _, cb := range cbs {
 				cbRes := cb(ctx, err)
@@ -243,9 +245,13 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 				}
 				if cbRes == CallbackResultRetry {
 					fmt.Printf("API(%s).Do erorr callback result is retry, retrying...\n", api.Name)
+					needRetry = true
 					break
 				}
 			}
+		}
+		if !needRetry {
+			break
 		}
 
 		fmt.Printf("API(%s).Do: tried: %d, max retry: %d\n", api.Name, tried, maxRetry)
