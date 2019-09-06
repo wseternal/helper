@@ -133,6 +133,7 @@ func (c *APIContext) SetRequestID(id string) {
 	if v != nil {
 		delete(OnGoingAPIs.Elems, v.(string))
 	}
+	c.Set(ContextKeyRequestID, id)
 	OnGoingAPIs.Elems[id] = c
 	OnGoingAPIs.Unlock()
 }
