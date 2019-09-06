@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -73,6 +72,7 @@ func (c *APIContext) Get(key string) interface{} {
 	return m.elems[key]
 }
 
+// NewAPIContext create API context with key/value map
 func NewAPIContext(ctx context.Context) *APIContext {
 	m := &apiContextValue{
 		elems: make(map[string]interface{}),
@@ -84,8 +84,57 @@ func NewAPIContext(ctx context.Context) *APIContext {
 		Context: context.WithValue(ctx, apiContextKey, m),
 	}
 	requestID := fmt.Sprintf("apictx_%d_%p", time.Now().Unix(), ctx)
-	apiCtx.Set(ContextKeyRequestID, requestID)
+	apiCtx.SetRequestID(requestID)
+
 	return apiCtx
+}
+
+func NewAPIContextCancelable() (*APIContext, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	return NewAPIContext(ctx), cancel
+}
+
+// NewAPIContextCancelableWith create context could be canceled either by cancel func returned,
+// or by cancel event of req.Context
+func NewAPIContextCancelableWith(req *http.Request) (apiCtx *APIContext, cancel context.CancelFunc) {
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(req.Context())
+	apiCtx = NewAPIContext(ctx)
+
+	requestID := req.FormValue(ContextKeyRequestID)
+	if len(requestID) > 0 {
+		apiCtx.SetRequestID(requestID)
+	}
+
+	if len(req.FormValue(ContextKeyDebug)) > 0 {
+		apiCtx.EnableAPIDebug()
+	}
+
+	apiCtx.Set(ContextKeyRequestPath, req.URL.Path)
+	apiCtx.Set(ContextKeyRequestForm, json.RawMessage(codec.JsonMarshal(req.Form)))
+
+	// cancel the operation if client disconnected
+	go func() {
+		<-apiCtx.Done()
+		OnGoingAPIs.Lock()
+		delete(OnGoingAPIs.Elems, requestID)
+		OnGoingAPIs.Unlock()
+	}()
+	return
+}
+
+func (c *APIContext) GetRequestID() string {
+	return c.Get(ContextKeyRequestID).(string)
+}
+
+func (c *APIContext) SetRequestID(id string) {
+	v := c.Get(ContextKeyRequestID)
+	OnGoingAPIs.Lock()
+	if v != nil {
+		delete(OnGoingAPIs.Elems, v.(string))
+	}
+	OnGoingAPIs.Elems[id] = c
+	OnGoingAPIs.Unlock()
 }
 
 func (c *APIContext) EnableAPIDebug() {
@@ -139,37 +188,6 @@ func (c *APIContext) GetLastAPIResponse() []byte {
 		}
 	}
 	return nil
-}
-
-func NewAPIContextWithCloseNotifier(w http.ResponseWriter, req *http.Request) (apiCtx *APIContext, cancel context.CancelFunc) {
-	var ctx context.Context
-	ctx, cancel = context.WithCancel(context.Background())
-	apiCtx = NewAPIContext(ctx)
-
-	requestID := req.FormValue(ContextKeyRequestID)
-	if len(requestID) > 0 {
-		apiCtx.Set(ContextKeyRequestID, requestID)
-	}
-
-	if len(req.FormValue(ContextKeyDebug)) > 0 {
-		apiCtx.EnableAPIDebug()
-	}
-
-	apiCtx.Set(ContextKeyRequestPath, req.URL.Path)
-	apiCtx.Set(ContextKeyRequestForm, json.RawMessage(codec.JsonMarshal(req.Form)))
-
-	// cancel the operation if client disconnected
-	c := w.(http.CloseNotifier).CloseNotify()
-	go func() {
-		select {
-		case <-c:
-			fmt.Fprintf(os.Stderr, "client closed the connection, abort %s\n", apiCtx.Get(ContextKeyRequestID).(string))
-			cancel()
-		case <-apiCtx.Done():
-			break
-		}
-	}()
-	return
 }
 
 func (c *APIContext) String() string {

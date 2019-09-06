@@ -72,10 +72,16 @@ var (
 		elem map[string]*API
 		sync.RWMutex
 	}
+
+	OnGoingAPIs struct {
+		Elems map[string]*APIContext
+		sync.RWMutex
+	}
 )
 
 func init() {
 	apis.elem = make(map[string]*API)
+	OnGoingAPIs.Elems = make(map[string]*APIContext)
 }
 
 // request type must be type to a valid struct
