@@ -3,10 +3,8 @@ package HttpAPI
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/wseternal/helper/codec"
 )
@@ -99,59 +97,42 @@ func NewAPIContext(ctx context.Context) *APIContext {
 	apiCtx := &APIContext{
 		Context: context.WithValue(ctx, apiContextKey, m),
 	}
-	requestID := fmt.Sprintf("apictx_%d_%p", time.Now().Unix(), ctx)
-	apiCtx.SetRequestID(requestID)
-
 	return apiCtx
 }
 
-func NewAPIContextCancelable() (*APIContext, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
-	return NewAPIContext(ctx), cancel
+func NewAPIContextCancelable(parent context.Context) (*APIContext, context.CancelFunc) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parent)
+	apiCtx := NewAPIContext(ctx)
+	apiCtx.SetCancelFunc(cancel)
+	return apiCtx, cancel
 }
 
 // NewAPIContextCancelableWith create context could be canceled either by cancel func returned,
 // or by cancel event of req.Context
 func NewAPIContextCancelableWith(req *http.Request) (apiCtx *APIContext, cancel context.CancelFunc) {
-	var ctx context.Context
-	ctx, cancel = context.WithCancel(req.Context())
-	apiCtx = NewAPIContext(ctx)
+	apiCtx, cancel = NewAPIContextCancelable(req.Context())
 
 	requestID := req.FormValue(ContextKeyRequestID)
 	if len(requestID) > 0 {
 		apiCtx.SetRequestID(requestID)
 	}
-
 	if len(req.FormValue(ContextKeyDebug)) > 0 {
 		apiCtx.EnableAPIDebug()
 	}
-
 	apiCtx.Set(ContextKeyRequestPath, req.URL.Path)
 	apiCtx.Set(ContextKeyRequestForm, json.RawMessage(codec.JsonMarshal(req.Form)))
-
-	// cancel the operation if client disconnected
-	go func() {
-		<-apiCtx.Done()
-		OnGoingAPIs.Lock()
-		delete(OnGoingAPIs.Elems, requestID)
-		OnGoingAPIs.Unlock()
-	}()
 	return
 }
 
 func (c *APIContext) GetRequestID() string {
-	return c.Get(ContextKeyRequestID).(string)
+	return c.GetString(ContextKeyRequestID, "")
 }
 
 func (c *APIContext) SetRequestID(id string) {
-	v := c.Get(ContextKeyRequestID)
-	OnGoingAPIs.Lock()
-	if v != nil {
-		delete(OnGoingAPIs.Elems, v.(string))
-	}
 	c.Set(ContextKeyRequestID, id)
-	OnGoingAPIs.Elems[id] = c
-	OnGoingAPIs.Unlock()
 }
 
 func (c *APIContext) GetRequestPath() string {
@@ -180,6 +161,18 @@ func (c *APIContext) EnableAPIDebug() {
 
 func (c *APIContext) IsAPIDebug() bool {
 	return c.Get(ContextKeyDebug) != nil
+}
+
+func (c *APIContext) SetCancelFunc(f context.CancelFunc) {
+	c.Set(ContextKeyCancelFunc, f)
+}
+
+func (c *APIContext) GetCancelFunc() context.CancelFunc {
+	v := c.Get(ContextKeyCancelFunc)
+	if v == nil {
+		return nil
+	}
+	return v.(context.CancelFunc)
 }
 
 func (c *APIContext) GetRequestObject() interface{} {

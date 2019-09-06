@@ -39,6 +39,7 @@ type ErrorCallback func(ctx *APIContext, err error) CallbackResult
 type CallbackResult int
 
 const (
+	ContextKeyCancelFunc  = "__api_cancel_func"
 	ContextKeyRequestDesc = "__api_request_desc"
 	ContextKeyRequestID   = "__api_request_id"
 	ContextKeyRequestPath = "__api_request_path"
@@ -137,9 +138,13 @@ func (api *API) _do(ctx *APIContext) (interface{}, error) {
 	if req, err = api.ReqF(ctx); err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx.Context)
+	req = req.WithContext(ctx)
 
 	t1 := time.Now()
+
+	api.preDo(ctx, req)
+	defer api.postDo(ctx)
+
 	if res, err = client.Do(req); err != nil {
 		return nil, err
 	}
@@ -188,9 +193,27 @@ func (api *API) _do(ctx *APIContext) (interface{}, error) {
 	return v.Interface(), nil
 }
 
+func (api *API) preDo(ctx *APIContext, req *http.Request) {
+	reqID := ctx.GetRequestID()
+	if len(reqID) == 0 {
+		reqID = fmt.Sprintf("%s_%d_%p ", api.Name, time.Now().Unix(), ctx)
+	}
+	OnGoingAPIs.Lock()
+	ctx.SetRequestID(reqID)
+	OnGoingAPIs.Elems[reqID] = ctx
+	OnGoingAPIs.Unlock()
+}
+
+func (api *API) postDo(ctx *APIContext) {
+	OnGoingAPIs.Lock()
+	delete(OnGoingAPIs.Elems, ctx.GetRequestID())
+	OnGoingAPIs.Unlock()
+}
+
 // ContextKeyReqObj must be set if RequestObjectType is not nil
 func (api *API) Do(ctx *APIContext) (interface{}, error) {
 	var err error
+
 	// check request object
 	reqObj := ctx.GetRequestObject()
 	if api.RequestObjectType != nil {
@@ -198,7 +221,6 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 			return nil, fmt.Errorf("invalid request obj: %v(%[1]T), %s", reqObj, err)
 		}
 	}
-
 	var res interface{}
 
 	var tried int64 = 0
