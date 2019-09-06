@@ -134,7 +134,7 @@ func (api *API) _do(ctx *APIContext) (interface{}, error) {
 			return nil, fmt.Errorf("request client in context is not a valid type *RequestClient, it's %T", ctx.Get(ContextKeyReqClient))
 		}
 	}
-	reqObj := ctx.GetRequestClient()
+	reqObj := ctx.GetRequestObject()
 	if req, err = api.ReqF(ctx); err != nil {
 		return nil, err
 	}
