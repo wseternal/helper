@@ -64,6 +64,22 @@ func (c *APIContext) SetNX(key string, val interface{}) {
 	m.Unlock()
 }
 
+func (c *APIContext) GetString(key, def string) string {
+	v := c.Get(key)
+	if v == nil {
+		return def
+	}
+	return v.(string)
+}
+
+func (c *APIContext) GetInt(key string, def int) int {
+	v := c.Get(key)
+	if v == nil {
+		return def
+	}
+	return v.(int)
+}
+
 func (c *APIContext) Get(key string) interface{} {
 	m := c.Value(apiContextKey).(*apiContextValue)
 	m.RLock()
@@ -136,6 +152,26 @@ func (c *APIContext) SetRequestID(id string) {
 	c.Set(ContextKeyRequestID, id)
 	OnGoingAPIs.Elems[id] = c
 	OnGoingAPIs.Unlock()
+}
+
+func (c *APIContext) GetRequestPath() string {
+	return c.GetString(ContextKeyRequestPath, "")
+}
+
+func (c *APIContext) SetRequestDesc(desc string) {
+	c.Set(ContextKeyRequestDesc, desc)
+}
+
+func (c *APIContext) GetRequestDesc() string {
+	return c.GetString(ContextKeyRequestDesc, "")
+}
+
+func (c *APIContext) GetRequestForm() json.RawMessage {
+	v := c.Get(ContextKeyRequestForm)
+	if v == nil {
+		return nil
+	}
+	return v.(json.RawMessage)
 }
 
 func (c *APIContext) EnableAPIDebug() {
