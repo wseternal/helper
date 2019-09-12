@@ -43,7 +43,7 @@ func (rdb *RDB) Last(set []byte) kvdb.Iterator {
 	return it
 }
 
-func (rdb *RDB) Range(ctx context.Context, set, start, end []byte, f func(iterator kvdb.Iterator)) {
+func (rdb *RDB) Range(ctx context.Context, set, start, end []byte, f func(iterator kvdb.Iterator)) error {
 	opt := &RangeOption{
 		StartKey: string(start),
 		EndKey:   string(end),
@@ -51,7 +51,7 @@ func (rdb *RDB) Range(ctx context.Context, set, start, end []byte, f func(iterat
 	}
 
 	// todo response to cancellable signal of ctx
-	rdb.RangeForeach(opt, func(iter *Iterator) {
+	return rdb.RangeForeach(opt, func(iter *Iterator) {
 		f(NewRDBIteratorFrom(iter))
 	})
 }

@@ -143,11 +143,11 @@ func (db *BoltDB) Last(bucket []byte) kvdb.Iterator {
 	return db.cursorFunc(bucket, cursorFuncLast, nil)
 }
 
-func (db *BoltDB) Range(ctx context.Context, bucket, start, end []byte, f func(iterator kvdb.Iterator)) {
+func (db *BoltDB) Range(ctx context.Context, bucket, start, end []byte, f func(iterator kvdb.Iterator)) error {
 	if bucket == nil {
 		bucket = DefaultBucket
 	}
-	_ = db.h.View(func(t *bolt.Tx) error {
+	return db.h.View(func(t *bolt.Tx) error {
 		b := t.Bucket(bucket)
 		if b == nil {
 			return nil
