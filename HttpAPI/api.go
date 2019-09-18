@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -287,4 +288,41 @@ func DoAPI(ctx *APIContext, name string, reqObj interface{}) (interface{}, error
 // e.g.: /a/b/c => ["a", "b", "c"]
 func SplitRequestPath(req *http.Request) []string {
 	return strings.Split(strings.Trim(req.URL.Path, "/"), "/")
+}
+
+func GetBooleanFormValue(req *http.Request, key string, def bool) bool {
+	str := req.FormValue(key)
+	if len(str) == 0 || len(str) > 5 {
+		return def
+	}
+	str = strings.ToLower(str)
+	switch str {
+	case "false":
+		return false
+	case "true":
+		return true
+	default:
+		return def
+	}
+}
+
+func GetStringFormValue(req *http.Request, key string, def string) string {
+	str := req.FormValue(key)
+	if len(str) == 0 {
+		return def
+	}
+	return str
+}
+
+func GetInt64FormValue(req *http.Request, key string, def int64) int64 {
+	str := req.FormValue(key)
+	if len(str) == 0 {
+		return def
+	}
+	v, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "GetInt64FormValue: convert %s to int64 failed, %s", str, err)
+		return def
+	}
+	return v
 }
