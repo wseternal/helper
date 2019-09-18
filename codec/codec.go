@@ -42,7 +42,12 @@ func JsonMarshal(i interface{}) string {
 }
 
 func ToJsonError(err error) string {
-	return fmt.Sprintf(`{"error":"%s"}`, err) + "\n"
+	obj := struct {
+		Error interface{} `json:"error"`
+	}{
+		Error: err,
+	}
+	return JsonMarshal(obj) + "\n"
 }
 
 func ToJsonResult(val interface{}) string {
