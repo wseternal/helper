@@ -73,3 +73,16 @@ func WriteHttpResult(w http.ResponseWriter, res interface{}, err error) {
 func WriteResultObject(w http.ResponseWriter, res interface{}) {
 	io.WriteString(w, JsonMarshal(res))
 }
+
+// resp will be consumed and closed
+func HttpError(resp *http.Response, err error) error {
+	if err == nil {
+		return nil
+	}
+	if resp == nil {
+		return err
+	}
+	data, _ := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	return fmt.Errorf("resp: %d:%s, content: %s, error: %s", resp.StatusCode, resp.Status, string(data), err)
+}
