@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/wseternal/helper/jsonrpc"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -76,13 +77,25 @@ func WriteResultObject(w http.ResponseWriter, res interface{}) {
 
 // resp will be consumed and closed
 func HttpError(resp *http.Response, err error) error {
-	if err == nil {
-		return nil
-	}
 	if resp == nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	data, _ := ioutil.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	return fmt.Errorf("resp: %d:%s, content: %s, error: %s", resp.StatusCode, resp.Status, string(data), err)
+	if err != nil {
+		return fmt.Errorf("resp: %d:%s, content: %s, error: %s", resp.StatusCode, resp.Status, string(data), err)
+	}
+
+	// err == nil, check repsponse object wheter are json object with error field
+	// for potential json error object, at east 11 bytes, as: {"error":x}
+	if len(data) < 11{
+		return nil
+	}
+	res := &jsonrpc.Response{}
+	err = json.Unmarshal(data, res)
+	if err == nil && res.Error != nil {
+		return fmt.Errorf("resp: %d:%s, content: %s, error: %s", resp.StatusCode, resp.Status, string(data), err)
+	}
+	return nil
 }
