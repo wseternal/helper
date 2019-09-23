@@ -34,4 +34,7 @@ func TestEnumerate(t *testing.T) {
 	db.Range(nil, nil, []byte("k"), []byte("l"), func(iter kvdb.Iterator) {
 		fmt.Printf("%s: %s\n", string(iter.Key()), string(iter.Value()))
 	})
+
+	iter := db.First(nil)
+	fmt.Printf("first: %s, %s\n", string(iter.Key()), string(iter.Value()))
 }

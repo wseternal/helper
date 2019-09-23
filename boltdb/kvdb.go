@@ -24,7 +24,7 @@ func (it *BoltDBIterator) Key() []byte {
 }
 
 func (it *BoltDBIterator) Value() []byte {
-	return it.key
+	return it.value
 }
 
 func (it *BoltDBIterator) Valid() bool {
