@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/wseternal/helper/jsonrpc"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	"github.com/wseternal/helper/jsonrpc"
 )
 
 func JsonUnmarshalFrom(r io.Reader, val interface{}) error {
@@ -44,9 +45,9 @@ func JsonMarshal(i interface{}) string {
 
 func ToJsonError(err error) string {
 	obj := struct {
-		Error interface{} `json:"error"`
+		Error string `json:"error"`
 	}{
-		Error: err,
+		Error: err.Error(),
 	}
 	return JsonMarshal(obj) + "\n"
 }
@@ -89,7 +90,7 @@ func HttpError(resp *http.Response, err error) error {
 
 	// err == nil, check repsponse object wheter are json object with error field
 	// for potential json error object, at east 11 bytes, as: {"error":x}
-	if len(data) < 11{
+	if len(data) < 11 {
 		return nil
 	}
 	res := &jsonrpc.Response{}
