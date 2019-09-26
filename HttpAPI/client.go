@@ -14,6 +14,7 @@ func init() {
 	DefaultClient, _ = NewRequestClient(time.Second*10, "")
 }
 
+// NewRequestClient will always be successful if proxy is empty
 func NewRequestClient(timeout time.Duration, proxy string) (c *RequestClient, err error) {
 	c = &RequestClient{
 		Client: &http.Client{
@@ -27,7 +28,7 @@ func NewRequestClient(timeout time.Duration, proxy string) (c *RequestClient, er
 			return nil, err
 		}
 		c.tr = &http.Transport{
-			Proxy: http.ProxyURL(u),
+			Proxy:              http.ProxyURL(u),
 			ProxyConnectHeader: make(http.Header),
 		}
 		c.Client.Transport = c.tr
