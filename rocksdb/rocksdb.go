@@ -301,7 +301,7 @@ func NewCFOptions(writeBufferSize int, blockCacheSize int, bloomFilterBit int) *
 	if blockCacheSize <= 0 {
 		blockCacheSize = DefaultBlockCacheSize
 	}
-	bbto.SetBlockCache(gorocksdb.NewLRUCache(blockCacheSize))
+	bbto.SetBlockCache(gorocksdb.NewLRUCache(uint64(blockCacheSize)))
 
 	if writeBufferSize <= 0 {
 		writeBufferSize = DefaultWriteBufferSize
