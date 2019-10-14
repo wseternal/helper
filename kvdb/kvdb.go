@@ -1,6 +1,9 @@
 package kvdb
 
-import "context"
+import (
+	"context"
+	"strconv"
+)
 
 type KeyValueImpl interface {
 	Put(set, key, val []byte) error
@@ -30,5 +33,17 @@ type Iterator interface {
 var (
 	ErrKeyNotExisted = "given key is not existed"
 	ErrSetNotExisted = "given set is not existed"
-	DefaultSet       = "default"
+	DefaultSet       = []byte("default")
 )
+
+func PutInt64(impl KeyValueImpl, set, key []byte, val int64) error {
+	return impl.Put(set, key, []byte(strconv.FormatInt(val, 10)))
+}
+
+func GetInt64(impl KeyValueImpl, set, key []byte) (int64, error) {
+	data, err := impl.Get(set, key)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseInt(string(data), 10, 64)
+}
