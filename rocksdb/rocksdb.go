@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"time"
-
-	"github.com/wseternal/helper/logger"
 
 	"github.com/wseternal/gorocksdb"
 )
@@ -169,9 +168,9 @@ func (opt *RangeOption) taskWatcherThread() {
 	select {
 	case <-opt.abortChan:
 		opt.abort = true
-		logger.LogI("RangeAction with opt: %+v aborted\n", opt)
+		fmt.Fprintf(os.Stderr, "RangeAction with opt: %+v aborted\n", opt)
 	case <-opt.done:
-		logger.LogI("RangeAction with opt: %+v finished\n", opt)
+		break
 	}
 	opt.abortChan = nil
 	close(opt.done)
@@ -716,7 +715,6 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 	if oper == nil {
 		return fmt.Errorf("oper parameter is nil")
 	}
-	tStart := time.Now()
 	cf := rdb.CFHs[opt.CF]
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
@@ -744,9 +742,6 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 			return fmt.Errorf("abort flag is set")
 		}
 	}
-	if cnt > 0 {
-		logger.LogI("RangeForeach: iterator %d entries, spent %s, abort: %t\n", cnt, time.Now().Sub(tStart).String(), opt.abort)
-	}
 	return nil
 }
 
@@ -754,13 +749,12 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFunc) {
 	var cnt int64 = 0
 	var cntNextKeys int64 = 0
-	var tStart time.Time
 	cf := rdb.CFHs[opt.CF]
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 
 	if oper == nil || f == nil {
-		logger.LogE("%s\n", "RangeForeachByTS: both f and oper shall not be nil")
+		fmt.Fprintf(os.Stderr, "%s\n", "RangeForeachByTS: both f and oper shall not be nil")
 		goto out
 	}
 	if opt.abortChan != nil {
@@ -773,7 +767,6 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 	if !iter.Valid() {
 		goto out
 	}
-	tStart = time.Now()
 	for {
 		tsStart := strconv.FormatInt(opt.StartTS, 10)
 		tsEnd := strconv.FormatInt(opt.EndTS, 10)
@@ -801,9 +794,6 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 		}
 	}
 out:
-	if cnt > 0 {
-		logger.LogI("RangeForeachByTS: iterate %d entries (%d nextKey), spent %s, abort: %t\n", cnt, cntNextKeys, time.Now().Sub(tStart).String(), opt.abort)
-	}
 	return
 }
 
@@ -820,7 +810,7 @@ func (rdb *RDB) GetRangeByKey(opt *RangeOption, w io.Writer) {
 		elem := NewKVJson(iter)
 		if opt.streamOutput {
 			if err = enc.Encode(elem); err != nil {
-				logger.LogE("GetRangeByTS: json encode %+v failed, %s\n", elem, err)
+				fmt.Fprintf(os.Stderr, "GetRangeByTS: json encode %+v failed, %s\n", elem, err)
 			}
 		} else {
 			elems = append(elems, elem)
@@ -829,7 +819,7 @@ func (rdb *RDB) GetRangeByKey(opt *RangeOption, w io.Writer) {
 
 	if !opt.streamOutput {
 		if err = enc.Encode(elems); err != nil {
-			logger.LogE("GetRangeByTS (%d %d): json marshal failed, %s\n", opt.StartTS, opt.EndTS, err)
+			fmt.Fprintf(os.Stderr, "GetRangeByTS (%d %d): json marshal failed, %s\n", opt.StartTS, opt.EndTS, err)
 			io.WriteString(w, "[]")
 			return
 		}
@@ -851,7 +841,7 @@ func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) {
 		elem := NewKVJson(iter)
 		if opt.streamOutput {
 			if err = enc.Encode(elem); err != nil {
-				logger.LogE("GetRangeByTS: json encode %+v failed, %s\n", elem, err)
+				fmt.Fprintf(os.Stderr, "GetRangeByTS: json encode %+v failed, %s\n", elem, err)
 			}
 		} else {
 			elems = append(elems, elem)
@@ -860,7 +850,7 @@ func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) {
 
 	if !opt.streamOutput {
 		if err = enc.Encode(elems); err != nil {
-			logger.LogE("GetRangeByTS (%d %d): json marshal failed, %s\n", opt.StartTS, opt.EndTS, err)
+			fmt.Fprintf(os.Stderr, "GetRangeByTS (%d %d): json marshal failed, %s\n", opt.StartTS, opt.EndTS, err)
 			io.WriteString(w, "[]")
 			return
 		}
@@ -873,9 +863,7 @@ func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 	rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
 		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
-			logger.LogW("DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
-		} else {
-			logger.LogD("DeleteCF: key %s cf %s\n", string(iter.Key().Data()), opt.CF)
+			fmt.Fprintf(os.Stderr, "DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
 		}
 	})
 }
@@ -885,9 +873,7 @@ func (rdb *RDB) DeleteRangeByKey(opt *RangeOption) {
 	rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
 		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
-			logger.LogW("DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
-		} else {
-			logger.LogD("DeleteCF: key %s cf %s\n", string(iter.Key().Data()), opt.CF)
+			fmt.Fprintf(os.Stderr, "DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
 		}
 	})
 }
@@ -929,7 +915,6 @@ func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {
 		return fmt.Errorf("invalid column family: %s\n", opt.CF)
 	}
 
-	logger.LogD("GetRange: %+v\n", opt)
 	if len(opt.Key) > 0 {
 		err = rdb.WriteTo(cf, []byte(opt.Key), w)
 		if err != nil {
