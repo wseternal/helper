@@ -2,15 +2,17 @@
 package redisw
 
 import (
-	"github.com/wseternal/helper"
 	"fmt"
 	"github.com/go-redis/redis"
+	"github.com/wseternal/helper"
 	"strconv"
 	"time"
 )
 
 type Client struct {
 	*redis.Client
+	Opt  *redis.Options
+	FOpt *redis.FailoverOptions
 }
 
 type TimeRange struct {
@@ -20,17 +22,42 @@ type TimeRange struct {
 
 var (
 	DefaultOption = &redis.Options{
-		Addr:        "127.0.0.1:6379",
-		MaxRetries:  0,
-		DialTimeout: 2 * time.Second,
-		ReadTimeout: 3 * time.Second,
+		Addr:         "127.0.0.1:6379",
+		DialTimeout:  2 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		MaxRetries:   3,
 	}
 
+	DefaultFailoverOption = &redis.FailoverOptions{
+		MasterName:    "mymaster",
+		SentinelAddrs: []string{":26379"},
+		DialTimeout:   2 * time.Second,
+		ReadTimeout:   3 * time.Second,
+		WriteTimeout:  3 * time.Second,
+		MaxRetries:    3,
+	}
 	AllZRange = &redis.ZRangeBy{
 		Min: "-inf",
 		Max: "+inf",
 	}
 )
+
+func NewFailoverClient(opt *redis.FailoverOptions) (*Client, error) {
+	var err error
+
+	if opt == nil {
+		opt = DefaultFailoverOption
+	}
+	db := redis.NewFailoverClient(opt)
+	if err = db.Ping().Err(); err != nil {
+		return nil, err
+	}
+	return &Client{
+		Client: db,
+		FOpt:   opt,
+	}, nil
+}
 
 // NewClient create new redis client, use ping to check
 // use Default option is opt is nil
@@ -45,6 +72,7 @@ func NewClient(opt *redis.Options) (*Client, error) {
 	}
 	return &Client{
 		Client: db,
+		Opt:    opt,
 	}, nil
 }
 
