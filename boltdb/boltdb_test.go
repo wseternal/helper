@@ -2,7 +2,10 @@ package boltdb
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"testing"
+
 	"github.com/wseternal/helper/kvdb"
 )
 
@@ -37,4 +40,24 @@ func TestEnumerate(t *testing.T) {
 
 	iter := db.First(nil)
 	fmt.Printf("first: %s, %s\n", string(iter.Key()), string(iter.Value()))
+}
+
+func TestNextSequence(t *testing.T) {
+	os.Remove("./test.db")
+	db, err := NewBoltDB("./test.db", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seq uint64
+
+	for i := 1; i <= 20; i++ {
+		if seq, err = db.GetNextSequence(nil); err != nil {
+			t.Fatal(err)
+		}
+		str := []byte(strconv.FormatUint(seq, 10))
+		db.Put(nil, []byte(str), []byte(str))
+	}
+	db.Range(nil, nil, db.First(nil).Value(), db.Last(nil).Value(), func(iter kvdb.Iterator) {
+		fmt.Printf("%s => %s\n", string(iter.Key()), string(iter.Value()))
+	})
 }

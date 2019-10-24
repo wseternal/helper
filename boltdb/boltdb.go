@@ -29,3 +29,24 @@ func NewBoltDB(fn string, readonly bool) (*BoltDB, error) {
 		Path: fn,
 	}, err
 }
+func (db *BoltDB) GetNextSequence(bucket []byte) (uint64, error) {
+	if bucket == nil {
+		bucket = DefaultBucket
+	}
+	tx, err := db.h.Begin(true)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var b *bolt.Bucket
+	if b, err = tx.CreateBucketIfNotExists(bucket); err != nil {
+		return 0, err
+	}
+	var seq uint64
+	seq, err = b.NextSequence()
+	if err != nil {
+		return 0, err
+	}
+	return seq, tx.Commit()
+}
