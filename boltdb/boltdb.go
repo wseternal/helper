@@ -50,3 +50,21 @@ func (db *BoltDB) GetNextSequence(bucket []byte) (uint64, error) {
 	}
 	return seq, tx.Commit()
 }
+
+func (db *BoltDB) GetBucketStats(bucket []byte) (*bolt.BucketStats, error) {
+	if bucket == nil {
+		bucket = DefaultBucket
+	}
+	tx, err := db.h.Begin(false)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var b *bolt.Bucket
+	if b = tx.Bucket(bucket); b == nil {
+		return nil, bolt.ErrBucketNotFound
+	}
+	stats := b.Stats()
+	return &stats, nil
+}
