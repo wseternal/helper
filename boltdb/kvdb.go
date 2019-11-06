@@ -153,7 +153,7 @@ func (db *BoltDB) Range(ctx context.Context, bucket, start, end []byte, f func(i
 			return nil
 		}
 		c := b.Cursor()
-		for k, v := c.Seek(start); k != nil && bytes.Compare(k, end) <= 0; k, v = c.Next() {
+		for k, v := c.Seek(start); k != nil && (len(end) == 0 || bytes.Compare(k, end) <= 0); k, v = c.Next() {
 			if ctx != nil && ctx.Err() != nil {
 				break
 			}

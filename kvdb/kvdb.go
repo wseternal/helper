@@ -18,6 +18,8 @@ type KeyValueImpl interface {
 	Last(set []byte) Iterator
 
 	// ctx could be a cancellable context used to cancel the long time range function
+	// if start is nil, iterate from the first key in bucket
+	// if end is nil, iterate to the end key in the bucket
 	Range(ctx context.Context, set, start, end []byte, f func(iterator Iterator)) error
 
 	Close() error

@@ -59,6 +59,11 @@ func TestNextSequence(t *testing.T) {
 	db.Range(nil, nil, db.First(nil).Value(), db.Last(nil).Value(), func(iter kvdb.Iterator) {
 		fmt.Printf("%s => %s\n", string(iter.Key()), string(iter.Value()))
 	})
+
+	db.Range(nil, nil, nil, nil, func(iter kvdb.Iterator) {
+		fmt.Printf("%s => %s\n", string(iter.Key()), string(iter.Value()))
+	})
+
 	stats, err := db.GetBucketStats(nil)
 	fmt.Printf("stats: %+v %v\n", stats, err)
 }
