@@ -53,7 +53,7 @@ func (db *BoltDB) Get(bucket, key []byte) ([]byte, error) {
 			res = append(res, b.Get(key)...)
 			return nil
 		}
-		return ErrBucketNotExist
+		return kvdb.ErrSetNotExisted
 	}); err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (db *BoltDB) Delete(bucket, key []byte) error {
 		if b := t.Bucket(bucket); b != nil {
 			return b.Delete(key)
 		}
-		return ErrBucketNotExist
+		return kvdb.ErrSetNotExisted
 	})
 }
 

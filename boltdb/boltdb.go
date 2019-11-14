@@ -1,9 +1,8 @@
 package boltdb
 
 import (
-	"errors"
-
 	"github.com/boltdb/bolt"
+	"github.com/wseternal/helper/kvdb"
 )
 
 type BoltDB struct {
@@ -12,8 +11,7 @@ type BoltDB struct {
 }
 
 var (
-	ErrBucketNotExist = errors.New("bucket is not existed")
-	DefaultBucket     = []byte("default")
+	DefaultBucket = kvdb.DefaultSet
 )
 
 func init() {

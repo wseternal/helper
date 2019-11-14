@@ -2,6 +2,7 @@ package kvdb
 
 import (
 	"context"
+	"errors"
 	"strconv"
 )
 
@@ -33,8 +34,8 @@ type Iterator interface {
 }
 
 var (
-	ErrKeyNotExisted = "given key is not existed"
-	ErrSetNotExisted = "given set is not existed"
+	ErrKeyNotExisted = errors.New("given key is not existed")
+	ErrSetNotExisted = errors.New("given set is not existed")
 	DefaultSet       = []byte("default")
 )
 
@@ -48,4 +49,11 @@ func GetInt64(impl KeyValueImpl, set, key []byte) (int64, error) {
 		return 0, err
 	}
 	return strconv.ParseInt(string(data), 10, 64)
+}
+
+func Get(impl KeyValueImpl, set, key []byte) ([]byte, error) {
+	if !impl.Exist(set, key) {
+		return nil, ErrKeyNotExisted
+	}
+	return impl.Get(set, key)
 }
