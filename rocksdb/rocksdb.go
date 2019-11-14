@@ -2,6 +2,7 @@ package rocksdb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -74,16 +75,9 @@ type RangeOption struct {
 	// output each object per-line, it's set when output parameter is specified
 	streamOutput bool
 
-	// range option could be terminated if
-	// signal send to the abortChan, this readonly channel
-	// is created externally and passed to range option
-	abortChan <-chan bool
-	abort     bool
-
-	// done is set when range option finished,
-	// so go routine which selects abortChan and done
-	// channel could be finished.
-	done chan int
+	// range option could be terminated by cancel the context
+	Ctx    context.Context
+	Cancel context.CancelFunc
 }
 
 type RDBIterator struct {
@@ -155,37 +149,20 @@ func init() {
 }
 
 func NewRangeOption() *RangeOption {
-	return &RangeOption{
+	opt := &RangeOption{
 		CF:           DefaultColumnFamilyName,
 		Limit:        -1,
 		TSFieldIndex: 1,
 		KeySeparator: ",",
 	}
+	opt.Ctx, opt.Cancel = context.WithCancel(context.Background())
+	return opt
 }
 
 func (opt *RangeOption) Abort() {
-	opt.abort = true
-}
-
-func (opt *RangeOption) taskDone() {
-	if opt.done != nil {
-		opt.done <- 0
+	if opt.Cancel != nil {
+		opt.Cancel()
 	}
-}
-func (opt *RangeOption) taskWatcherThread() {
-	if opt.abortChan == nil || opt.done == nil {
-		return
-	}
-	select {
-	case <-opt.abortChan:
-		opt.abort = true
-		fmt.Fprintf(os.Stderr, "RangeAction with opt: %+v aborted\n", opt)
-	case <-opt.done:
-		break
-	}
-	opt.abortChan = nil
-	close(opt.done)
-	opt.done = nil
 }
 
 func GenHijackTsInKeyByIndex(idx int, sep []byte) HijackTsInKey {
@@ -730,10 +707,8 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 
-	if opt.abortChan != nil {
-		opt.done = make(chan int)
-		go opt.taskWatcherThread()
-		defer opt.taskDone()
+	if opt.Cancel != nil {
+		defer opt.Cancel()
 	}
 
 	if len(opt.StartKey) > 0 {
@@ -749,8 +724,8 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 		if opt.Limit > 0 && cnt >= opt.Limit {
 			break
 		}
-		if opt.abort {
-			return fmt.Errorf("abort flag is set")
+		if opt.Ctx.Err() != nil {
+			return opt.Ctx.Err()
 		}
 	}
 	return nil
@@ -764,14 +739,13 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 
+	if opt.Cancel != nil {
+		defer opt.Cancel()
+	}
+
 	if oper == nil || f == nil {
 		fmt.Fprintf(os.Stderr, "%s\n", "RangeForeachByTS: both f and oper shall not be nil")
 		goto out
-	}
-	if opt.abortChan != nil {
-		opt.done = make(chan int)
-		go opt.taskWatcherThread()
-		defer opt.taskDone()
 	}
 
 	iter.SeekToFirst()
@@ -795,7 +769,7 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 			if opt.Limit > 0 && cnt >= opt.Limit {
 				goto out
 			}
-			if opt.abort {
+			if opt.Ctx.Err() != nil {
 				goto out
 			}
 		}

@@ -1,6 +1,7 @@
 package rocksdb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,7 +50,7 @@ func (rdb *RDB) handleInfo(params interface{}) ([]byte, error) {
 	return snk.Bytes(), err
 }
 
-func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan <-chan bool) ([]byte, error) {
+func (rdb *RDB) handleRangeAction(method string, params interface{}, ctx context.Context) ([]byte, error) {
 	opt := NewRangeOption()
 	var output string
 	var snk *sink.Sink
@@ -91,8 +92,8 @@ func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan 
 			return nil, fmt.Errorf("invalid tsindex: %d", opt.TSFieldIndex)
 		}
 	}
-	if closeChan != nil {
-		opt.abortChan = closeChan
+	if ctx != nil {
+		opt.Ctx, opt.Cancel = context.WithCancel(ctx)
 	}
 	now := time.Now().Unix()
 	if f = jsonrpc.GetIntegerField(params, "startts"); f != nil {
@@ -127,7 +128,7 @@ func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan 
 	return snk.Bytes(), nil
 }
 
-func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <-chan bool) (*jsonrpc.Response, error) {
+func (rdb *RDB) HandleRPC(req *jsonrpc.Request, ctx context.Context) (*jsonrpc.Response, error) {
 	var res interface{}
 	var err error
 	var resp = &jsonrpc.Response{
@@ -139,7 +140,7 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, closeChan <-chan bool) (*jsonrpc
 
 	switch req.Method {
 	case "get", "delete":
-		res, err = rdb.handleRangeActioin(req.Method, req.Params, closeChan)
+		res, err = rdb.handleRangeAction(req.Method, req.Params, ctx)
 	case "set":
 		if err = rdb.handleSet(req.Params); err == nil {
 			res = "set ok"
@@ -173,7 +174,6 @@ func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 	var err error
 	var res interface{}
 
-	notify := w.(http.CloseNotifier).CloseNotify()
 	if req.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		err = fmt.Errorf("method %s is not supported, only support post", req.Method)
@@ -189,7 +189,7 @@ func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 		if err = jsonReq.UnmarshalFrom(data); err != nil {
 			goto out
 		}
-		res, err = rdb.HandleRPC(jsonReq, notify)
+		res, err = rdb.HandleRPC(jsonReq, req.Context())
 	default:
 		err = fmt.Errorf("request URL %s is not supported", req.URL.Path)
 	}
