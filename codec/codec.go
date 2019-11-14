@@ -61,19 +61,19 @@ func ToJsonResult(val interface{}) string {
 	return JsonMarshal(obj) + "\n"
 }
 
-func WriteHttpResult(w http.ResponseWriter, res interface{}, err error) {
+func WriteHttpResult(w io.Writer, res interface{}, err error) {
 	if err == nil {
 		if res == nil {
 			res = "ok"
 		}
-		io.WriteString(w, ToJsonResult(res))
+		_, _ = io.WriteString(w, ToJsonResult(res))
 		return
 	}
-	io.WriteString(w, ToJsonError(err))
+	_, _ = io.WriteString(w, ToJsonError(err))
 }
 
-func WriteResultObject(w http.ResponseWriter, res interface{}) {
-	io.WriteString(w, JsonMarshal(res))
+func WriteResultObject(w io.Writer, res interface{}) {
+	_, _ = io.WriteString(w, JsonMarshal(res))
 }
 
 // resp will be consumed and closed

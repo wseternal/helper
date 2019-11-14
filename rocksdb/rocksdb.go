@@ -43,13 +43,13 @@ type WriteBatches map[string]*gorocksdb.WriteBatch
 type Property string
 type PropertyPrefix string
 
-type KVRaw struct {
-	Key, Value string
-}
-
 type KVJson struct {
 	Key   string
 	Value json.RawMessage
+}
+
+type KVRaw struct {
+	Key, Value string
 }
 
 type RangeOption struct {
@@ -72,12 +72,15 @@ type RangeOption struct {
 	// limit returned entry count
 	Limit int64
 
-	// output each object per-line, it's set when output parameter is specified
-	streamOutput bool
+	// IsJsonValue: if true, use json.RawMessage for value when encoded key/value to the output
+	IsJsonValue bool
 
 	// range option could be terminated by cancel the context
 	Ctx    context.Context
 	Cancel context.CancelFunc
+
+	// output each object per-line, it's set when output parameter is specified
+	streamOutput bool
 }
 
 type RDBIterator struct {
@@ -678,15 +681,11 @@ func (rdb *RDB) WriteTo(cf *gorocksdb.ColumnFamilyHandle, key []byte, w io.Write
 	if !(iter.Valid() && string(iter.Key().Data()) == string(key)) {
 		return fmt.Errorf("can not find key: %s", string(key))
 	}
-	var kv struct {
-		Key, Value string
-	}
 
+	kv := NewKVRaw(iter)
 	var data []byte
-	kv.Key = string(iter.Key().Data())
-	kv.Value = string(iter.Value().Data())
 	data, _ = json.Marshal(&kv)
-	w.Write(data)
+	_, _ = w.Write(data)
 
 	return nil
 }
@@ -694,7 +693,14 @@ func (rdb *RDB) WriteTo(cf *gorocksdb.ColumnFamilyHandle, key []byte, w io.Write
 func NewKVJson(iter *gorocksdb.Iterator) *KVJson {
 	return &KVJson{
 		Key:   string(iter.Key().Data()),
-		Value: json.RawMessage(iter.Value().Data()),
+		Value: iter.Value().Data(),
+	}
+}
+
+func NewKVRaw(iter *gorocksdb.Iterator) *KVRaw {
+	return &KVRaw{
+		Key:   string(iter.Key().Data()),
+		Value: string(iter.Value().Data()),
 	}
 }
 
@@ -732,7 +738,8 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 }
 
 // RangeForeachByTS enumerate all entries with the ts field falls in range [startTS, endTS]
-func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFunc) {
+func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFunc) error {
+	var err error
 	var cnt int64 = 0
 	var cntNextKeys int64 = 0
 	cf := rdb.CFHs[opt.CF]
@@ -742,9 +749,8 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 	if opt.Cancel != nil {
 		defer opt.Cancel()
 	}
-
 	if oper == nil || f == nil {
-		fmt.Fprintf(os.Stderr, "%s\n", "RangeForeachByTS: both f and oper shall not be nil")
+		err = fmt.Errorf("%s\n", "RangeForeachByTS: both f and oper shall not be nil")
 		goto out
 	}
 
@@ -770,6 +776,7 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 				goto out
 			}
 			if opt.Ctx.Err() != nil {
+				err = opt.Ctx.Err()
 				goto out
 			}
 		}
@@ -779,51 +786,60 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 		}
 	}
 out:
-	return
+	return err
 }
 
-func (rdb *RDB) GetRangeByKey(opt *RangeOption, w io.Writer) {
+func (rdb *RDB) GetRangeByKey(opt *RangeOption, w io.Writer) error {
 	var err error
 	enc := json.NewEncoder(w)
-	var elems []*KVJson
+	var elems []interface{}
 
 	if !opt.streamOutput {
-		elems = make([]*KVJson, 0)
+		elems = make([]interface{}, 0)
 	}
 
-	rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
-		elem := NewKVJson(iter)
+	if err = rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
+		var elem interface{}
+		if opt.IsJsonValue {
+			elem = NewKVJson(iter)
+		} else {
+			elem = NewKVRaw(iter)
+		}
 		if opt.streamOutput {
 			if err = enc.Encode(elem); err != nil {
-				fmt.Fprintf(os.Stderr, "GetRangeByTS: json encode %+v failed, %s\n", elem, err)
+				fmt.Fprintf(os.Stderr, "GetRangeByKey: json encode %+v failed, %s\n", elem, err)
 			}
 		} else {
 			elems = append(elems, elem)
 		}
-	})
-
+	}); err != nil {
+		return err
+	}
 	if !opt.streamOutput {
 		if err = enc.Encode(elems); err != nil {
-			fmt.Fprintf(os.Stderr, "GetRangeByTS (%d %d): json marshal failed, %s\n", opt.StartTS, opt.EndTS, err)
-			io.WriteString(w, "[]")
-			return
+			return fmt.Errorf("GetRangeByKey (%s %s): json marshal %d elements, failed, %s\n", opt.StartKey, opt.EndKey, len(elems), err)
 		}
 	}
+	return nil
 }
 
-func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) {
+func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) error {
 	var err error
-	var elems []*KVJson
+	var elems []interface{}
 
 	f := GenHijackTsInKeyByIndex(opt.TSFieldIndex, []byte(opt.KeySeparator))
 	enc := json.NewEncoder(w)
 
 	if !opt.streamOutput {
-		elems = make([]*KVJson, 0)
+		elems = make([]interface{}, 0)
 	}
-
-	rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
-		elem := NewKVJson(iter)
+	if err = rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
+		var elem interface{}
+		if opt.IsJsonValue {
+			elem = NewKVJson(iter)
+		} else {
+			elem = NewKVRaw(iter)
+		}
 		if opt.streamOutput {
 			if err = enc.Encode(elem); err != nil {
 				fmt.Fprintf(os.Stderr, "GetRangeByTS: json encode %+v failed, %s\n", elem, err)
@@ -831,21 +847,23 @@ func (rdb *RDB) GetRangeByTS(opt *RangeOption, w io.Writer) {
 		} else {
 			elems = append(elems, elem)
 		}
-	})
+	}); err != nil {
+		return err
+	}
 
 	if !opt.streamOutput {
 		if err = enc.Encode(elems); err != nil {
-			fmt.Fprintf(os.Stderr, "GetRangeByTS (%d %d): json marshal failed, %s\n", opt.StartTS, opt.EndTS, err)
-			io.WriteString(w, "[]")
-			return
+			err = fmt.Errorf("GetRangeByTS (%d %d): json marshal %d elements failed, %s\n", opt.StartTS, opt.EndTS, len(elems), err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 	f := GenHijackTsInKeyByIndex(opt.TSFieldIndex, []byte(opt.KeySeparator))
 	cf := rdb.CFHs[opt.CF]
-	rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
+	_ = rdb.RangeForeachByTS(opt, f, func(iter *gorocksdb.Iterator) {
 		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
@@ -855,7 +873,7 @@ func (rdb *RDB) DeleteRangeByTS(opt *RangeOption) {
 
 func (rdb *RDB) DeleteRangeByKey(opt *RangeOption) {
 	cf := rdb.CFHs[opt.CF]
-	rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
+	_ = rdb.RangeForeach(opt, func(iter *gorocksdb.Iterator) {
 		err := rdb.DeleteCF(cf, iter.Key().Data())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "DeleteCF: key %s cf %s failed, %s\n", string(iter.Key().Data()), opt.CF, err)
@@ -899,23 +917,19 @@ func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {
 	if cf == nil {
 		return fmt.Errorf("invalid column family: %s\n", opt.CF)
 	}
-
 	if len(opt.Key) > 0 {
 		err = rdb.WriteTo(cf, []byte(opt.Key), w)
 		if err != nil {
 			return fmt.Errorf("get using key %s failed: %s", opt.Key, err)
 		}
-	} else {
-		if opt.StartTS > 0 || opt.EndTS > 0 {
-			if opt.EndTS == 0 {
-				opt.EndTS = time.Now().Unix()
-			}
-			rdb.GetRangeByTS(opt, w)
-		} else {
-			rdb.GetRangeByKey(opt, w)
-		}
 	}
-	return nil
+	if opt.StartTS > 0 || opt.EndTS > 0 {
+		if opt.EndTS == 0 {
+			opt.EndTS = time.Now().Unix()
+		}
+		return rdb.GetRangeByTS(opt, w)
+	}
+	return rdb.GetRangeByKey(opt, w)
 }
 
 func (rdb *RDB) DeleteRange(opt *RangeOption) error {

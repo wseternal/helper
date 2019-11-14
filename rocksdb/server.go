@@ -58,6 +58,8 @@ func (rdb *RDB) handleRangeAction(method string, params interface{}, ctx context
 
 	var p *string
 	var f *float64
+	var t *bool
+
 	if p = jsonrpc.GetStringField(params, "cf"); p != nil {
 		opt.CF = *p
 	}
@@ -69,6 +71,9 @@ func (rdb *RDB) handleRangeAction(method string, params interface{}, ctx context
 	}
 	if p = jsonrpc.GetStringField(params, "endkey"); p != nil {
 		opt.EndKey = *p
+	}
+	if t = jsonrpc.GetBoolField(params, "jsonval"); t != nil {
+		opt.IsJsonValue = *t
 	}
 	if p = jsonrpc.GetStringField(params, "output"); p != nil {
 		output = *p
@@ -119,7 +124,7 @@ func (rdb *RDB) handleRangeAction(method string, params interface{}, ctx context
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handleRangeAction failed, opt: %+v, %s", opt, err)
 	}
 	if len(output) > 0 {
 		msg := fmt.Sprintf(`"write result to %s successfully"`, output)
