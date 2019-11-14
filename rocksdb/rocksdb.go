@@ -52,13 +52,24 @@ type KVJson struct {
 }
 
 type RangeOption struct {
+	// all entries with the the key falls in range [StartKey, EndKey]
 	StartKey, EndKey string
-	StartTS, EndTS   int64
-	TSFieldIndex     int
-	KeySeparator     string
-	Key              string
-	CF               string
-	Limit            int64
+
+	// all entries with the ts field falls in range [startTS, endTS]
+	StartTS, EndTS int64
+	// the ts field index in the key after splitted
+	TSFieldIndex int
+	// separator used to split the key
+	KeySeparator string
+
+	// if Key existed, get entry with given Key
+	Key string
+
+	// column family
+	CF string
+
+	// limit returned entry count
+	Limit int64
 
 	// output each object per-line, it's set when output parameter is specified
 	streamOutput bool
@@ -933,7 +944,7 @@ func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {
 	return nil
 }
 
-func (rdb *RDB) DeleteRange(opt *RangeOption, w io.Writer) error {
+func (rdb *RDB) DeleteRange(opt *RangeOption) error {
 	var err error
 	if opt == nil {
 		return fmt.Errorf("%s", "range option is nil")
@@ -957,7 +968,6 @@ func (rdb *RDB) DeleteRange(opt *RangeOption, w io.Writer) error {
 		} else {
 			rdb.DeleteRangeByKey(opt)
 		}
-		io.WriteString(w, `{"result":"ok"}`)
 	}
 	return nil
 }

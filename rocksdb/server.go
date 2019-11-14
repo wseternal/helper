@@ -3,6 +3,7 @@ package rocksdb
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
@@ -112,7 +113,9 @@ func (rdb *RDB) handleRangeActioin(method string, params interface{}, closeChan 
 	case "get":
 		err = rdb.GetRange(opt, snk)
 	case "delete":
-		err = rdb.DeleteRange(opt, snk)
+		if err = rdb.DeleteRange(opt); err == nil {
+			_, _ = io.WriteString(snk, `{"result":"ok"}`)
+		}
 	}
 	if err != nil {
 		return nil, err

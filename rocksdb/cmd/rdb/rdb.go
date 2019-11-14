@@ -109,7 +109,11 @@ func (cmd *DBCmd) delete() error {
 	if err != nil {
 		return err
 	}
-	return cmd.rdb.DeleteRange(&cmd.Option.RangeOption, cmd.snk)
+	if err = cmd.rdb.DeleteRange(&cmd.Option.RangeOption); err == nil {
+		_, _ = io.WriteString(cmd.snk, `{"result":"ok"}`)
+		return nil
+	}
+	return err
 }
 
 func (cmd *DBCmd) get() error {
