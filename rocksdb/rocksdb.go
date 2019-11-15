@@ -730,7 +730,7 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 		if opt.Limit > 0 && cnt >= opt.Limit {
 			break
 		}
-		if opt.Ctx.Err() != nil {
+		if opt.Ctx != nil && opt.Ctx.Err() != nil {
 			return opt.Ctx.Err()
 		}
 	}
@@ -775,7 +775,7 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 			if opt.Limit > 0 && cnt >= opt.Limit {
 				goto out
 			}
-			if opt.Ctx.Err() != nil {
+			if opt.Ctx != nil && opt.Ctx.Err() != nil {
 				err = opt.Ctx.Err()
 				goto out
 			}
