@@ -3,6 +3,7 @@ package rocksdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,6 +31,22 @@ func (rdb *RDB) handleSet(params interface{}) error {
 		cf = *p
 	}
 	return rdb.PutCF(rdb.CFHs[cf], []byte(key), []byte(val))
+}
+
+func (rdb *RDB) handleBackupInfo(params interface{}) (interface{}, error) {
+	p := jsonrpc.GetStringField(params, "path")
+	if p == nil || len(*p) == 0 {
+		return nil, errors.New("path is required in params")
+	}
+	return GetBackupInfo(*p)
+}
+
+func (rdb *RDB) handleBackup(params interface{}) ([]byte, error) {
+	p := jsonrpc.GetStringField(params, "path")
+	if p == nil || len(*p) == 0 {
+		return nil, errors.New("path is required in params")
+	}
+	return nil, rdb.Backup(*p)
 }
 
 func (rdb *RDB) handleInfo(params interface{}) ([]byte, error) {
@@ -161,6 +178,10 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, ctx context.Context) (*jsonrpc.R
 			rdb.CompactCF(v)
 		}
 		res = "compact ok"
+	case "backup":
+		res, err = rdb.handleBackup(req.Params)
+	case "backup_info":
+		res, err = rdb.handleBackupInfo(req.Params)
 	default:
 		err = fmt.Errorf("unsupported method: %s", req.Method)
 	}
