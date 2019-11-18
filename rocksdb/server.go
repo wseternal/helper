@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"time"
 
 	"github.com/wseternal/helper/codec"
@@ -186,6 +187,11 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, ctx context.Context) (*jsonrpc.R
 		err = fmt.Errorf("unsupported method: %s", req.Method)
 	}
 	if err != nil {
+		// when ctx.Err() is not nil, the returned err may not reach client side.
+		// e.g.: client had canceled the connection, so print information to stderr as well
+		if ctx.Err() != nil {
+			fmt.Fprintf(os.Stderr, "rdb rpc failed, request: %+v, error: %s\n", req, err)
+		}
 		return nil, err
 	}
 	if buf, ok := res.([]byte); ok {
