@@ -922,6 +922,7 @@ func (rdb *RDB) GetRange(opt *RangeOption, w io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("get using key %s failed: %s", opt.Key, err)
 		}
+		return nil
 	}
 	if opt.StartTS > 0 || opt.EndTS > 0 {
 		if opt.EndTS == 0 {
