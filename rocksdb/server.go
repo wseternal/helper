@@ -105,6 +105,12 @@ func (rdb *RDB) handleRangeAction(method string, params interface{}, ctx context
 	}
 	if f = jsonrpc.GetIntegerField(params, "limit"); f != nil {
 		opt.Limit = int64(*f)
+	} else {
+		// in case of neither output nor limit is specified, set limit to 1000
+		// to avoid memory exhausted when returning large result
+		if !opt.streamOutput {
+			opt.Limit = 1000
+		}
 	}
 	if p = jsonrpc.GetStringField(params, "sep"); p != nil {
 		opt.KeySeparator = *p
