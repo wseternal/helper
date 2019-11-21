@@ -158,11 +158,22 @@ func NewRangeOption() *RangeOption {
 		TSFieldIndex: 1,
 		KeySeparator: ",",
 	}
-	opt.Ctx, opt.Cancel = context.WithCancel(context.Background())
 	return opt
 }
 
-func (opt *RangeOption) Abort() {
+func (opt *RangeOption) SetupCancelContext(ctx context.Context) {
+	// cancel the previous context if any
+	if opt.Cancel != nil {
+		opt.Cancel()
+
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	opt.Ctx, opt.Cancel = context.WithCancel(ctx)
+}
+
+func (opt *RangeOption) Done() {
 	if opt.Cancel != nil {
 		opt.Cancel()
 	}
@@ -713,9 +724,7 @@ func (rdb *RDB) RangeForeach(opt *RangeOption, oper RangeFunc) error {
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 
-	if opt.Cancel != nil {
-		defer opt.Cancel()
-	}
+	defer opt.Done()
 
 	if len(opt.StartKey) > 0 {
 		iter.Seek([]byte(opt.StartKey))
@@ -746,9 +755,8 @@ func (rdb *RDB) RangeForeachByTS(opt *RangeOption, f HijackTsInKey, oper RangeFu
 	iter := rdb.NewIteratorCF(DefaultReadOption, cf)
 	defer iter.Close()
 
-	if opt.Cancel != nil {
-		defer opt.Cancel()
-	}
+	defer opt.Done()
+
 	if oper == nil || f == nil {
 		err = fmt.Errorf("%s\n", "RangeForeachByTS: both f and oper shall not be nil")
 		goto out

@@ -49,8 +49,8 @@ func (rdb *RDB) Range(ctx context.Context, set, start, end []byte, f func(iterat
 		EndKey:   string(end),
 		CF:       string(set),
 	}
+	opt.SetupCancelContext(ctx)
 
-	// todo response to cancellable signal of ctx
 	return rdb.RangeForeach(opt, func(iter *Iterator) {
 		f(NewRDBIteratorFrom(iter))
 	})

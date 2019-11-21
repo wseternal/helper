@@ -121,9 +121,8 @@ func (rdb *RDB) handleRangeAction(method string, params interface{}, ctx context
 			return nil, fmt.Errorf("invalid tsindex: %d", opt.TSFieldIndex)
 		}
 	}
-	if ctx != nil {
-		opt.Ctx, opt.Cancel = context.WithCancel(ctx)
-	}
+	opt.SetupCancelContext(ctx)
+
 	now := time.Now().Unix()
 	if f = jsonrpc.GetIntegerField(params, "startts"); f != nil {
 		opt.StartTS = int64(*f)
