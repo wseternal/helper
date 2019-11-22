@@ -38,7 +38,7 @@ func XmlUnmarshalFromFile(fn string, val interface{}) error {
 func JsonMarshal(i interface{}) string {
 	out, err := json.Marshal(i)
 	if err != nil {
-		return fmt.Sprintf(`{"error":"%s"}`, err)
+		return ToJsonError(err)
 	}
 	return string(out)
 }
