@@ -61,7 +61,7 @@ func ToJsonResult(val interface{}) string {
 	return JsonMarshal(obj) + "\n"
 }
 
-func WriteHttpResult(w io.Writer, res interface{}, err error) {
+func WriteJsonRpcString(w io.Writer, res interface{}, err error) {
 	if err == nil {
 		if res == nil {
 			res = "ok"
@@ -72,7 +72,22 @@ func WriteHttpResult(w io.Writer, res interface{}, err error) {
 	_, _ = io.WriteString(w, ToJsonError(err))
 }
 
-func WriteResultObject(w io.Writer, res interface{}) {
+func WriteString(w io.Writer, i interface{}) {
+	switch v := i.(type) {
+	case string:
+		_, _ = io.WriteString(w, v)
+	case []byte:
+		_, _ = w.Write(v)
+	default:
+		if tmp, ok := i.(fmt.Stringer); ok {
+			_, _ = io.WriteString(w, tmp.String())
+			break
+		}
+		WriteJsonString(w, i)
+	}
+}
+
+func WriteJsonString(w io.Writer, res interface{}) {
 	_, _ = io.WriteString(w, JsonMarshal(res))
 }
 

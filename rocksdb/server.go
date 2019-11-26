@@ -231,5 +231,5 @@ func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 		err = fmt.Errorf("request URL %s is not supported", req.URL.Path)
 	}
 out:
-	codec.WriteHttpResult(w, res, err)
+	codec.WriteJsonRpcString(w, res, err)
 }

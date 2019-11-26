@@ -2,6 +2,7 @@ package codec
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -24,4 +25,20 @@ func TestGobCodec(t *testing.T) {
 		t.Fatalf("gob decode failed, error: %s\n", err)
 	}
 	fmt.Printf("o1 is %#v\n", o1)
+}
+
+func TestWrite(t *testing.T) {
+	var res interface{}
+
+	res = "string literal\n"
+	WriteString(os.Stderr, res)
+
+	res = []byte("[]byte literal\n")
+	WriteString(os.Stderr, res)
+
+	res = &info{
+		A: 1,
+		B: 2,
+	}
+	WriteString(os.Stderr, res)
 }
