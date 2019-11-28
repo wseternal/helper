@@ -326,3 +326,7 @@ func GetInt64FormValue(req *http.Request, key string, def int64) int64 {
 	}
 	return v
 }
+
+func ErrCallbackDisableRetry(ctx *APIContext, err error) CallbackResult {
+	return CallbackResultAbort
+}
