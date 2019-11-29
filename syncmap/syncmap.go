@@ -32,6 +32,10 @@ func New(keyType, valueType reflect.Type) (*Map, error) {
 	return m, nil
 }
 
+func (m *Map) Delete(key interface{}) error {
+	return m.Add(key, nil)
+}
+
 // value: pass nil will delete the corresponding key
 func (m *Map) Add(key, value interface{}) error {
 	if key == nil {
