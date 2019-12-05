@@ -179,8 +179,20 @@ func (c *APIContext) GetRequestObject() interface{} {
 	return c.Get(ContextKeyReqObj)
 }
 
-func (c *APIContext) GetRequestClient() interface{} {
-	return c.Get(ContextKeyReqClient)
+func (c *APIContext) SetRequestClient(client *RequestClient) {
+	c.Set(ContextKeyReqClient, client)
+}
+
+func (c *APIContext) GetRequestClient() *RequestClient {
+	v := c.Get(ContextKeyReqClient)
+	if v == nil {
+		return nil
+	}
+	client, ok := v.(*RequestClient)
+	if !ok {
+		return nil
+	}
+	return client
 }
 
 func (c *APIContext) GetErrorCallback() []ErrorCallback {
