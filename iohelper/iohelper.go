@@ -5,10 +5,16 @@ import (
 	"crypto"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"net/http"
+	"io"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"sync"
+	"time"
+
+	"github.com/wseternal/helper/codec"
 
 	"github.com/wseternal/helper"
 	"github.com/wseternal/helper/iohelper/filter"
@@ -19,13 +25,38 @@ import (
 	_ "crypto/md5"
 	_ "crypto/sha1"
 	_ "crypto/sha256"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
-var bufPool = sync.Pool{
-	New: func() interface{} {
-		b := make([]byte, 8192)
-		return &b
-	},
+type RateLimitedInfo struct {
+	// last do something timestamp
+	LastDoTS int64
+	DoCount  int64
+	// total count trying to do something
+	TotalCount int64
+
+	PFL *helper.PCFileLine
+}
+
+var (
+	bufPool = sync.Pool{
+		New: func() interface{} {
+			b := make([]byte, 8192)
+			return &b
+		},
+	}
+	RateLimitCache *lru.TwoQueueCache
+
+	ErrRateLimited = errors.New("suppressed by rate limit")
+)
+
+func init() {
+	var err error
+	RateLimitCache, err = lru.New2Q(2048)
+	if err != nil {
+		log.Panicf("initialize rate limited log cache failed, %s\n", err)
+	}
 }
 
 func DefaultGetBuffer() *[]byte {
@@ -72,7 +103,7 @@ func ValidFileSum(fn string, expectSum string, hash crypto.Hash) error {
 		return err
 	}
 	sum := hex.EncodeToString(data)
-	if sum !=  expectSum {
+	if sum != expectSum {
 		return fmt.Errorf("computed sum: %s <> expected sum: %s", sum, expectSum)
 	}
 	return nil
@@ -125,4 +156,58 @@ func CopyFile(dst, src string) (int, error) {
 		return 0, err
 	}
 	return pump.All(source, snk, true)
+}
+
+func WriteWithRate(w io.Writer, intervalTS int64, format string, args ...interface{}) {
+	pfl := helper.GetPCFileLine(1)
+	now := time.Now().Unix()
+
+	v, ok := RateLimitCache.Get(pfl.PC)
+	var info *RateLimitedInfo
+	if ok {
+		info = v.(*RateLimitedInfo)
+		info.TotalCount++
+		if now-info.LastDoTS < intervalTS {
+			return
+		}
+	} else {
+		info = &RateLimitedInfo{
+			PFL:        pfl,
+			TotalCount: 1,
+		}
+		RateLimitCache.Add(pfl.PC, info)
+	}
+	info.LastDoTS = now
+	info.DoCount++
+	fmt.Fprintf(w, format, args...)
+}
+
+func ErrorfWithRate(intervalTS int64, format string, args ...interface{}) error {
+	pfl := helper.GetPCFileLine(1)
+	now := time.Now().Unix()
+
+	err := fmt.Errorf(format, args...)
+
+	v, ok := RateLimitCache.Get(pfl.PC)
+	var info *RateLimitedInfo
+	if ok {
+		info = v.(*RateLimitedInfo)
+		info.TotalCount++
+		if now-info.LastDoTS < intervalTS {
+			return fmt.Errorf("%w:%s", ErrRateLimited, err)
+		}
+	} else {
+		info = &RateLimitedInfo{
+			PFL:        pfl,
+			TotalCount: 1,
+		}
+		RateLimitCache.Add(pfl.PC, info)
+	}
+	info.LastDoTS = now
+	info.DoCount++
+	return err
+}
+
+func (info *RateLimitedInfo) String() string {
+	return codec.JsonMarshal(info)
 }

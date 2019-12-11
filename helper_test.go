@@ -77,3 +77,8 @@ func TestNextKey(t *testing.T) {
 	s, err := NextKey(key)
 	fmt.Printf("nextkey of %s %s, %v\n", key, s, err)
 }
+
+func TestGetPCFileLine(t *testing.T) {
+	fmt.Printf("%v\n", GetPCFileLine())
+	fmt.Printf("%v\n", GetPCFileLine())
+}

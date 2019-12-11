@@ -3,8 +3,11 @@ package iohelper
 import (
 	"crypto"
 	"encoding/xml"
+	"errors"
 	"fmt"
+	"os"
 	"testing"
+	"time"
 )
 
 func TestValidFilesum(t *testing.T) {
@@ -24,5 +27,31 @@ func TestSP(t *testing.T) {
 	}
 	for _, elem := range sp.BElems {
 		fmt.Printf("%v\n", *elem)
+	}
+}
+
+func TestWriteWithRate(t *testing.T) {
+	var err error
+	for i := 0; i < 10; i++ {
+		err = ErrorfWithRate(5, "%s\n", time.Now().String())
+		if errors.Is(err, ErrRateLimited) {
+			time.Sleep(time.Second * 1)
+			continue
+		}
+		fmt.Printf("%s\n", err)
+		time.Sleep(time.Second * 1)
+	}
+	for _, elem := range RateLimitCache.Keys() {
+		v, err := RateLimitCache.Get(elem)
+		fmt.Printf("%s %v\n", v, err)
+	}
+
+	for i := 0; i < 10; i++ {
+		WriteWithRate(os.Stderr, 5, "%s\n", time.Now().String())
+		time.Sleep(time.Second * 1)
+	}
+	for _, elem := range RateLimitCache.Keys() {
+		v, err := RateLimitCache.Get(elem)
+		fmt.Printf("%s %v\n", v, err)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"reflect"
+	"runtime"
 	"runtime/debug"
 	"sort"
 	"strconv"
@@ -21,6 +22,12 @@ import (
 
 type SigAction struct {
 	Funcs []func()
+}
+
+type PCFileLine struct {
+	PC   uintptr
+	File string
+	Line int
 }
 
 var (
@@ -350,4 +357,15 @@ func CompactString(msg string, maxLen int) string {
 
 func Compact(val interface{}, maxLen int) string {
 	return CompactString(fmt.Sprintf("%+v", val), maxLen)
+}
+
+// backTraceCnt: 0, the function invokes GetPCFileLine
+// 1: parent of the function invokes GetPCFileLine
+func GetPCFileLine(backTraceCnt int) *PCFileLine {
+	p, f, l, _ := runtime.Caller(1 + backTraceCnt)
+	return &PCFileLine{
+		PC:   p,
+		File: f,
+		Line: l,
+	}
 }
