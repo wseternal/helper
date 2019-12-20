@@ -122,12 +122,13 @@ func GetSysNetAddr(name string, allowVirtual bool) (string, error) {
 	return strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1), nil
 }
 
-// TODO: add capability set get interface
-
+// return first non-zero mac address in sys/class/ieee80211/xxx/macaddress, then in /sys/class/net/xxxx/address
 func GetMachineID() string {
 	var fp string
 	var elems []os.FileInfo
 	var err error
+
+	var mac string
 
 	if !helper.IsDir(SysFSIEEE80211) {
 		goto sysnet
@@ -144,9 +145,12 @@ func GetMachineID() string {
 		if !helper.IsFile(fp) {
 			continue
 		}
-		return strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1)
+		mac = strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1)
+		if len(mac) != 12 || mac == AllZeroMACNoColon {
+			continue
+		}
+		return mac
 	}
-
 sysnet:
 	if !helper.IsDir(SysFSNet) {
 		goto out
@@ -156,20 +160,15 @@ sysnet:
 		goto out
 	}
 	for _, elem := range elems {
-		var link string
 		if (elem.Mode() & os.ModeSymlink) == 0 {
 			continue
 		}
-		fp = filepath.Join(SysFSNet, elem.Name())
-		if link, err = os.Readlink(fp); err != nil {
-			goto out
-		}
-		if strings.Contains(link, "virtual") {
-			logger.LogD("GetMachineID: ignore virtual device %s under sysnet\n", elem.Name())
+		fp = filepath.Join(SysFSNet, elem.Name(), "address")
+		mac = strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1)
+		if len(mac) != 12 || mac == AllZeroMACNoColon {
 			continue
 		}
-		fp = filepath.Join(SysFSNet, elem.Name(), "address")
-		return strings.Replace(iohelper.CatTextFile(fp, AllZeroMAC), ":", "", -1)
+		return mac
 	}
 out:
 	return strings.Replace(AllZeroMAC, ":", "", -1)

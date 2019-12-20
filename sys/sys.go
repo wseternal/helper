@@ -12,6 +12,7 @@ type NetStatistics struct {
 
 const (
 	AllZeroMAC = "00:00:00:00:00:00"
+	AllZeroMACNoColon = "000000000000"
 )
 
 func GetCurrentUsername() (string, error) {
