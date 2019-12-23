@@ -33,7 +33,7 @@ func TestSP(t *testing.T) {
 func TestWriteWithRate(t *testing.T) {
 	var err error
 	for i := 0; i < 10; i++ {
-		err = ErrorfWithRate(5, "%s\n", time.Now().String())
+		err = ErrorfWithRate(5, "test1", "%s\n", time.Now().String())
 		if errors.Is(err, ErrRateLimited) {
 			time.Sleep(time.Second * 1)
 			continue

@@ -30,6 +30,7 @@ import (
 )
 
 type RateLimitedInfo struct {
+	Key string
 	// last do something timestamp
 	LastDoTS int64
 	DoCount  int64
@@ -158,11 +159,12 @@ func CopyFile(dst, src string) (int, error) {
 	return pump.All(source, snk, true)
 }
 
-func WriteWithRate(w io.Writer, intervalTS int64, format string, args ...interface{}) {
+func WriteWithRate(w io.Writer, intervalTS int64, key string, format string, args ...interface{}) {
 	pfl := helper.GetPCFileLine(1)
 	now := time.Now().Unix()
 
-	v, ok := RateLimitCache.Get(pfl.PC)
+	_key := fmt.Sprintf("%s_%d", key, pfl.PC)
+	v, ok := RateLimitCache.Get(_key)
 	var info *RateLimitedInfo
 	if ok {
 		info = v.(*RateLimitedInfo)
@@ -172,23 +174,25 @@ func WriteWithRate(w io.Writer, intervalTS int64, format string, args ...interfa
 		}
 	} else {
 		info = &RateLimitedInfo{
+			Key:        key,
 			PFL:        pfl,
 			TotalCount: 1,
 		}
-		RateLimitCache.Add(pfl.PC, info)
+		RateLimitCache.Add(_key, info)
 	}
 	info.LastDoTS = now
 	info.DoCount++
 	fmt.Fprintf(w, format, args...)
 }
 
-func ErrorfWithRate(intervalTS int64, format string, args ...interface{}) error {
+func ErrorfWithRate(intervalTS int64, key string, format string, args ...interface{}) error {
 	pfl := helper.GetPCFileLine(1)
 	now := time.Now().Unix()
 
 	err := fmt.Errorf(format, args...)
 
-	v, ok := RateLimitCache.Get(pfl.PC)
+	_key := fmt.Sprintf("%s_%d", key, pfl.PC)
+	v, ok := RateLimitCache.Get(_key)
 	var info *RateLimitedInfo
 	if ok {
 		info = v.(*RateLimitedInfo)
@@ -198,10 +202,11 @@ func ErrorfWithRate(intervalTS int64, format string, args ...interface{}) error 
 		}
 	} else {
 		info = &RateLimitedInfo{
+			Key:        key,
 			PFL:        pfl,
 			TotalCount: 1,
 		}
-		RateLimitCache.Add(pfl.PC, info)
+		RateLimitCache.Add(_key, info)
 	}
 	info.LastDoTS = now
 	info.DoCount++
