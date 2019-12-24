@@ -257,6 +257,8 @@ func (api *API) Do(ctx *APIContext) (interface{}, error) {
 		if tried > maxRetry {
 			break
 		}
+		// reset the reqOjb when retry, the error callback may change the request object in the context
+		ctx.SetRequestObject(reqObj)
 	}
 out:
 	return res, err
@@ -270,7 +272,7 @@ func DoAPI(ctx *APIContext, name string, reqObj interface{}) (interface{}, error
 	if ctx == nil {
 		ctx = NewAPIContext(nil)
 	}
-	ctx.Set(ContextKeyReqObj, reqObj)
+	ctx.SetRequestObject(reqObj)
 	res, err := api.Do(ctx)
 	if err != nil {
 		return nil, err

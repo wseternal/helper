@@ -179,6 +179,10 @@ func (c *APIContext) GetRequestObject() interface{} {
 	return c.Get(ContextKeyReqObj)
 }
 
+func (c *APIContext) SetRequestObject(obj interface{}) {
+	c.Set(ContextKeyReqObj, obj)
+}
+
 func (c *APIContext) SetRequestClient(client *RequestClient) {
 	c.Set(ContextKeyReqClient, client)
 }
