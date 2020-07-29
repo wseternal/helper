@@ -48,6 +48,7 @@ const (
 	S                = "05"
 	HH_M_S           = "15:04:05"
 	H_M_S_PM         = "03:04:05 PM"
+	DateSimpleFormat = "2006-01-02"
 	TimeSimpleFormat = "2006-01-02 15:04:05"
 )
 

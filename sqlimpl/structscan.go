@@ -12,7 +12,7 @@ import (
 // StructScan scan sql row into destVal, which must be an valid pointer to a struct
 // the columns selected from the data table will be deduce from the all the fields of destVal
 // Pay Attention: destVal of onRow is reused, you must deep copy that variable if you need store it
-func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, destValType reflect.Type, onRow func(destVal interface{})) error {
+func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, destValType reflect.Type, onRow func(destVal interface{}), args ...interface{}) error {
 	if destValType.Kind() != reflect.Struct {
 		return fmt.Errorf("invalid destValType %v, require struct", destValType)
 	}
@@ -56,7 +56,7 @@ func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, dest
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return err
 	}
