@@ -3,6 +3,7 @@ package sqlimpl
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -24,6 +25,10 @@ type SQLImpl struct {
 
 const (
 	DriverlMysql = "mysql"
+)
+
+var(
+	jsonNullBytes =  []byte("null")
 )
 
 // ConnectDB connect to specific database using given driver and dsn
@@ -52,7 +57,33 @@ type DataTable struct {
 	impl            *SQLImpl
 }
 
+type NullString struct {
+	sql.NullString
+}
+
 func init() {
+}
+
+func (v NullString) MarshalJSON() ([]byte, error) {
+	if v.Valid {
+		return json.Marshal(v.String)
+	}
+	return jsonNullBytes, nil
+}
+
+func (v *NullString) UnmarshalJSON(data []byte) error {
+	var tmp *string
+	var err error
+	if err = json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+	if tmp == nil {
+		v.Valid = false
+	} else {
+		v.String  = *tmp
+		v.Valid = true
+	}
+	return nil
 }
 
 func (impl *SQLImpl) Close() error {
