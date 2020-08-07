@@ -32,16 +32,26 @@ func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, dest
 	// v: pointer to an instance of destValType
 	v := reflect.New(destValType)
 
+	distinctExist := false
 	for i := 0; i < destValType.NumField(); i++ {
 		tmp = destValType.Field(i)
 		name := tmp.Name
 		if len(tmp.Tag) > 0 {
-			fn = strings.SplitN(tmp.Tag.Get("sql"), ",", 2)[0]
+			fields := strings.SplitN(tmp.Tag.Get("sql"), ",", 2)
+			fn = fields[0]
 			if len(fn) > 0 {
 				if fn == "-" {
 					continue
 				}
-				name = fn
+				if len(fields) == 2 && fields[1] == "distinct" {
+					if distinctExist {
+						return fmt.Errorf("distct can only be specifed on one column")
+					}
+					name = fmt.Sprintf("distinct(%s)", fn)
+					distinctExist = true
+				} else {
+					name = fn
+				}
 			}
 		}
 		fieldNames = append(fieldNames, name)
