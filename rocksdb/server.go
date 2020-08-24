@@ -50,6 +50,21 @@ func (rdb *RDB) handleBackup(params interface{}) ([]byte, error) {
 	return nil, rdb.Backup(*p)
 }
 
+func (rdb *RDB) handlePurgeBackup(params interface{}) ([]byte, error) {
+	p := jsonrpc.GetStringField(params, "path")
+	if p == nil || len(*p) == 0 {
+		return nil, errors.New("path is required in params")
+	}
+	path := *p
+
+	pKeep := jsonrpc.GetIntegerField(params, "keep")
+	var keep uint32 = 3
+	if pKeep != nil {
+		keep = uint32(*pKeep)
+	}
+	return nil, PurgeOldBackups(path, keep)
+}
+
 func (rdb *RDB) handleInfo(params interface{}) ([]byte, error) {
 	var err error
 	var verbose bool
@@ -188,6 +203,8 @@ func (rdb *RDB) HandleRPC(req *jsonrpc.Request, ctx context.Context) (*jsonrpc.R
 		res, err = rdb.handleBackup(req.Params)
 	case "backup_info":
 		res, err = rdb.handleBackupInfo(req.Params)
+	case "purge_backup":
+		res, err = rdb.handlePurgeBackup(req.Params)
 	default:
 		err = fmt.Errorf("unsupported method: %s", req.Method)
 	}
