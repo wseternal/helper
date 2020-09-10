@@ -195,7 +195,7 @@ func QueryGeocoderLocation(key string, lat,lng string, opt *LocationOption) (*Ge
 		return nil, fmt.Errorf("unmarshal response data: %s to LocationResponse failed, %s", string(data), err)
 	}
 	if res.Status != 0 {
-		return nil, fmt.Errorf("non-zero status code returned, %s", string(data))
+		return nil, fmt.Errorf("non-zero status code returned for request: %s, %s", u, string(data))
 	}
 	return res.Result, nil
 }
