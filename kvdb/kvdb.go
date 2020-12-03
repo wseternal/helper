@@ -57,3 +57,7 @@ func Get(impl KeyValueImpl, set, key []byte) ([]byte, error) {
 	}
 	return impl.Get(set, key)
 }
+
+func Delete(impl KeyValueImpl, set, key []byte) error {
+	return impl.Delete(set, key)
+}
