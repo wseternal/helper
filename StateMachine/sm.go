@@ -141,6 +141,10 @@ func NewStateMachine(name string) *SMObject {
 	return &obj
 }
 
+func (obj *SMObject) SetName(name string) {
+	obj.Name = name
+}
+
 func (obj *SMObject) RegisterState(state string, handler StateHandler) {
 	obj.StateList.Lock()
 	defer obj.StateList.Unlock()
