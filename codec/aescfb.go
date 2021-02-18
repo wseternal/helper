@@ -79,6 +79,8 @@ func AesKey(nonce, key []byte) []byte {
 	}
 }
 
+
+// return 16 random octets
 func GetNonce() ([]byte, error) {
 	out := make([]byte, aes.BlockSize)
 	_, err := io.ReadFull(rand.Reader, out)
