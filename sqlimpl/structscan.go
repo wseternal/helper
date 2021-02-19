@@ -9,8 +9,29 @@ import (
 	"strings"
 )
 
+
+func (dt *DataTable) StructScanOne(ctx context.Context, condOrderLimit string, destValType reflect.Type, args ...interface{}) (destVal interface{}, err error) {
+	var res interface{}
+	if len(condOrderLimit) == 0 {
+		condOrderLimit = "limit 1"
+	}
+	onRow := func(v interface{}) {
+		if res != nil {
+			return
+		}
+		res = v
+	}
+
+	if err = dt.StructScan(ctx, condOrderLimit, destValType, onRow, args...); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // StructScan scan sql row into destVal, which must be an valid pointer to a struct
 // the columns selected from the data table will be deduce from the all the fields of destVal
+// descValType shall be: reflect.TypeOf(T{})
+// destVal in the onRow callback is: *T
 // Pay Attention: destVal of onRow is reused, you must deep copy that variable if you need store it
 func (dt *DataTable) StructScan(ctx context.Context, condOrderLimit string, destValType reflect.Type, onRow func(destVal interface{}), args ...interface{}) error {
 	if destValType.Kind() != reflect.Struct {
