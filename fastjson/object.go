@@ -44,7 +44,7 @@ func (obj *JSONObject) ContainsKey(key string) bool {
 	return found
 }
 
-func (obj *JSONObject) Put(key string , value interface {}) {
+func (obj *JSONObject) Put(key string, value interface{}) {
 	obj.entries[key] = value
 }
 
@@ -69,14 +69,28 @@ func (obj *JSONObject) GetBoolValue(key string) bool {
 	return false
 }
 
-func (obj *JSONObject) GetIntValue(key string) int64 {
+// Get would dereference the value found if it's a pointer
+func (obj *JSONObject) Get(key string) interface{} {
 	i, found := obj.entries[key]
 	if !found {
+		return nil
+	}
+
+	v := reflect.ValueOf(i)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	return v.Interface()
+}
+
+func (obj *JSONObject) GetIntValue(key string) int64 {
+	i := obj.Get(key)
+	if i == nil {
 		return 0
 	}
 	v := reflect.ValueOf(i)
 	k := v.Kind()
-	if  k == reflect.Float32 || k == reflect.Float64 {
+	if k == reflect.Float32 || k == reflect.Float64 {
 		return int64(v.Float())
 	}
 	if k == reflect.String {
@@ -93,10 +107,11 @@ func (obj *JSONObject) GetIntValue(key string) int64 {
 }
 
 func (obj *JSONObject) GetFloatValue(key string) float64 {
-	i, found := obj.entries[key]
-	if !found {
+	i := obj.Get(key)
+	if i == nil {
 		return 0
 	}
+
 	v := reflect.ValueOf(i)
 	k := v.Type().Kind()
 	if k >= reflect.Int && k <= reflect.Int64 {
@@ -105,14 +120,15 @@ func (obj *JSONObject) GetFloatValue(key string) float64 {
 	if k >= reflect.Uint && k <= reflect.Uint64 {
 		return float64(v.Uint())
 	}
-	if  k == reflect.Float32 || k == reflect.Float64 {
+	if k == reflect.Float32 || k == reflect.Float64 {
 		return v.Float()
 	}
 	return 0
 }
 
 func (obj *JSONObject) GetString(key string) interface{} {
-	v := obj.entries[key]
+	v := obj.Get(key)
+
 	switch t := v.(type) {
 	case nil:
 		return "null"

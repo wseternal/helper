@@ -69,7 +69,7 @@ const (
 )
 
 func init() {
-	flag.StringVar(&mysqlDsn, "m", `root:weixiaoxin123@tcp(121.42.157.74:3316)/wifiadx`, "mysql data source name, in format user:passwd@tcp(host:port)/db")
+	flag.StringVar(&mysqlDsn, "m", ``, "mysql data source name, in format user:passwd@tcp(host:port)/db")
 	flag.StringVar(&redisAddr, "r", "127.0.0.1:6379", "redis server address")
 }
 

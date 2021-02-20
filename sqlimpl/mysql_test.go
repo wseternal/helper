@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	dsn    = "websocket:cloudfi@tcp(127.0.0.1:3306)/websocket"
+	dsn    = "user:pass@tcp(127.0.0.1:3306)/db"
 	tables = []*DataTable{
 		&DataTable{
 			Name: "test",
@@ -67,7 +67,7 @@ func TestDataTableActions(t *testing.T) {
 }
 
 func TestGetTable(t *testing.T) {
-	dsn = "root:weixiaoxin123@tcp(121.42.157.74:3316)/wifiadx"
+	dsn = "root:weixiaoxin123@tcp(127.0.0.1:3306)/sandbox"
 	impl, err := ConnectDB("mysql", dsn)
 	if err != nil {
 		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
@@ -80,7 +80,7 @@ func TestGetTable(t *testing.T) {
 }
 
 func TestScanJSONObject(t *testing.T) {
-	dsn = "root:Zkzx3411@tcp(www.cloudfi.cn:3306)/wifiadx"
+	dsn = "root:weixiaoxin123@tcp(127.0.0.1:3306)/sandbox"
 	impl, err := ConnectDB("mysql", dsn)
 	if err != nil {
 		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
@@ -99,5 +99,6 @@ func TestScanJSONObject(t *testing.T) {
 
 	var obj *fastjson.JSONObject
 	obj, err = impl.FetchOne("select * from wxwork_app limit 1")
-	t.Logf("%v %v\n", obj, err)
+	t.Logf("%v %v\n", obj.String(), err)
+	t.Logf("%d %d\n", obj.GetIntValue("updatets"), obj.GetIntValue("expiresin"))
 }

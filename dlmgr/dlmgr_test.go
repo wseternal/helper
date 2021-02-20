@@ -7,7 +7,7 @@ func TestDownload(t *testing.T) {
 	d.Start()
 	d.Download(&ContentDL{
 		Name:    "captive",
-		URL:     "http://www.cloudfi.cn/captive.html",
+		URL:     "http://www.xxxx.com/xxxxx",
 		Hashsum: "41ba060eb1c0898e0a4a0cca36a8ca91",
 	}, nil)
 	select {}
