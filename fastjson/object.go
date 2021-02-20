@@ -129,7 +129,7 @@ func (obj *JSONObject) GetFloatValue(key string) float64 {
 	return 0
 }
 
-func (obj *JSONObject) GetString(key string) interface{} {
+func (obj *JSONObject) GetString(key string) string {
 	v := obj.Get(key)
 
 	switch t := v.(type) {
