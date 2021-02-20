@@ -36,7 +36,7 @@ func (m *Map) Delete(key interface{}) error {
 	return m.Add(key, nil)
 }
 
-// value: pass nil will delete the corresponding key
+// Add given key value pair. if value is nil, the corresponding key will be deleted
 func (m *Map) Add(key, value interface{}) error {
 	if key == nil {
 		return ErrNilKey
@@ -77,7 +77,7 @@ func (m *Map) Has(key interface{}) bool {
 	return v.IsValid()
 }
 
-// if the element type are string, str := m.Get(key).(string)
+// Get return the value with given element type at created, str := m.Get(key).(string)
 func (m *Map) Get(key interface{}) interface{} {
 	v := m._get(key)
 	if !v.IsValid() {
@@ -86,7 +86,7 @@ func (m *Map) Get(key interface{}) interface{} {
 	return v.Interface()
 }
 
-// if the element type if string, arr := m.ValueSlice().([]string)
+// ValueSlice return slice of values with given element type, e.g: arr := m.ValueSlice().([]string)
 func (m *Map) ValueSlice() interface{} {
 	s := reflect.MakeSlice(reflect.SliceOf(m.valueType), 0, 0)
 	m.RLock()
