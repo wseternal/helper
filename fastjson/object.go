@@ -18,10 +18,13 @@ func ObjectFrom(m map[string]interface{}) *JSONObject {
 }
 
 func NewObject() *JSONObject {
-
 	obj := &JSONObject{}
 	obj.entries = make(map[string]interface{})
 	return obj
+}
+
+func (obj *JSONObject) MarshalJSON() ([]byte, error) {
+	return json.Marshal(obj.entries)
 }
 
 func (obj *JSONObject) UnmarshalJSON(bytes []byte) error {

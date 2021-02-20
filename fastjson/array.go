@@ -23,6 +23,10 @@ func (arr *JSONArray) Size() int {
 	return len(arr.entries)
 }
 
+func (arr *JSONArray) MarshalJSON() ([]byte, error) {
+	return json.Marshal(arr.entries)
+}
+
 func (arr *JSONArray) UnmarshalJSON(bytes []byte) error {
 	if arr.entries == nil {
 		arr.entries = make([]interface{}, 0)

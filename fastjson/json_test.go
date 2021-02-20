@@ -1,6 +1,7 @@
 package fastjson
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -14,4 +15,6 @@ func TestParseObject(t *testing.T) {
 	fmt.Printf("%+v %v\n", obj, err)
 	fmt.Printf("%d %d\n", obj.GetIntValue("s1"), obj.GetIntValue("i1"))
 	fmt.Printf("%s\n", obj.GetString("a1"))
+	data, err := json.Marshal(obj)
+	fmt.Printf("%s %v\n", string(data), err)
 }
