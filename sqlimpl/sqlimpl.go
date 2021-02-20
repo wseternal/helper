@@ -4,15 +4,16 @@ package sqlimpl
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/wseternal/helper/fastjson"
+
 	"github.com/wseternal/helper/logger"
 
 	// add mysql driver implement
-	"errors"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -27,8 +28,8 @@ const (
 	DriverlMysql = "mysql"
 )
 
-var(
-	jsonNullBytes =  []byte("null")
+var (
+	jsonNullBytes = []byte("null")
 )
 
 // ConnectDB connect to specific database using given driver and dsn
@@ -80,7 +81,7 @@ func (v *NullString) UnmarshalJSON(data []byte) error {
 	if tmp == nil {
 		v.Valid = false
 	} else {
-		v.String  = *tmp
+		v.String = *tmp
 		v.Valid = true
 	}
 	return nil
@@ -241,4 +242,59 @@ func (t *DataTable) Update(condition string, keys []string, args ...interface{})
 		logger.LogE("Execute %s failed, error: %s\n", updateString, err)
 	}
 	return result, err
+}
+
+func scanToJSONObject(columns []string, rows *sql.Rows) (*fastjson.JSONObject, error) {
+	obj := fastjson.NewObject()
+
+	cnt := len(columns)
+	valPtrs := make([]interface{}, cnt)
+
+	for i := 0; i < cnt; i++ {
+		valPtrs[i] = new(string)
+	}
+
+	var err error
+	if err = rows.Scan(valPtrs...); err != nil {
+		return nil, err
+	}
+	for idx, col := range columns {
+		obj.Put(col, valPtrs[idx])
+	}
+	return obj, nil
+}
+
+func (impl *SQLImpl) FetchOne(query string, args ...interface{}) (*fastjson.JSONObject, error) {
+	list, err := impl.FetchAll(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	if len(list) > 0 {
+		return list[0], nil
+	}
+	return nil, nil
+}
+
+func (impl *SQLImpl) FetchAll(query string, args ...interface{}) ([]*fastjson.JSONObject, error) {
+	stmt, err := impl.DB.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(args...)
+	var ret []*fastjson.JSONObject
+
+	columns, _ := rows.Columns()
+	var obj *fastjson.JSONObject
+	for rows.Next() {
+		obj, err = scanToJSONObject(columns, rows)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, obj)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return ret, nil
 }

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/wseternal/helper/fastjson"
 )
 
 var (
@@ -75,4 +77,27 @@ func TestGetTable(t *testing.T) {
 	var dt *DataTable
 	dt, err = impl.GetTable("wifi_ch_userinfo")
 	fmt.Printf("%v %v\n", dt, err)
+}
+
+func TestScanJSONObject(t *testing.T) {
+	dsn = "root:Zkzx3411@tcp(www.cloudfi.cn:3306)/wifiadx"
+	impl, err := ConnectDB("mysql", dsn)
+	if err != nil {
+		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
+	}
+	defer impl.Close()
+
+	var ret []*fastjson.JSONObject
+	if ret, err = impl.FetchAll("select * from wxwork_login"); err != nil {
+		t.Fatalf("fetch all failed, %s\n", err)
+	}
+
+	t.Logf("found %d entries\n", len(ret))
+	for _, elem := range ret {
+		t.Logf("%s\n", elem.String())
+	}
+
+	var obj *fastjson.JSONObject
+	obj, err = impl.FetchOne("select * from wxwork_app limit 1")
+	t.Logf("%v %v\n", obj, err)
 }
