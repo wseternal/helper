@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/wseternal/helper/fastjson"
 )
@@ -101,4 +102,22 @@ func TestScanJSONObject(t *testing.T) {
 	obj, err = impl.FetchOne("select * from wxwork_app limit 1")
 	t.Logf("%v %v\n", obj.String(), err)
 	t.Logf("%d %d\n", obj.GetIntValue("updatets"), obj.GetIntValue("expiresin"))
+}
+
+func TestInsertJsonObject(t *testing.T) {
+	dsn = "root:Zkzx3411@tcp(www.cloudfi.cn:3306)/wifiadx"
+	impl, err := ConnectDB("mysql", dsn)
+	if err != nil {
+		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
+	}
+	defer impl.Close()
+
+	obj := fastjson.NewObject()
+	obj.Put("mac", "112233445566")
+	obj.Put("ts", time.Now().Unix())
+	obj.Put("location", "test location")
+	obj.Put("lat", "123")
+	obj.Put("lng", "234")
+	res, err := impl.Insert("scale_location", true, obj)
+	fmt.Printf("%v %v\n", res, err)
 }

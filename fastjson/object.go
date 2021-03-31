@@ -161,3 +161,38 @@ func ParseObject(data string) (*JSONObject, error) {
 	err := obj.UnmarshalJSON([]byte(data))
 	return obj, err
 }
+
+func (obj *JSONObject) Entries() (keys []string, values []interface{}) {
+	if obj.entries == nil {
+		return
+	}
+	for k, v := range obj.entries {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+	return keys, values
+}
+
+func (obj *JSONObject) Keys() []string {
+	var ret []string
+	if obj.entries == nil {
+		return ret
+	}
+
+	for k, _ := range obj.entries {
+		ret = append(ret, k)
+	}
+	return ret
+}
+
+func (obj *JSONObject) Values() []interface{} {
+	var ret []interface{}
+	if obj.entries == nil {
+		return ret
+	}
+
+	for _, v := range obj.entries {
+		ret = append(ret, v)
+	}
+	return ret
+}

@@ -298,3 +298,30 @@ func (impl *SQLImpl) FetchAll(query string, args ...interface{}) ([]*fastjson.JS
 	}
 	return ret, nil
 }
+
+func (impl *SQLImpl) Insert(table string, replace bool, args *fastjson.JSONObject) (sql.Result, error) {
+	if args == nil || len(args.Keys()) == 0 {
+		return nil, errors.New("non-empty args is required to insert into table")
+	}
+	var act string
+	if replace {
+		act = "replace"
+	} else {
+		act = "insert"
+	}
+	keys, values := args.Entries()
+
+	cols := strings.Join(keys, ",")
+	argPlaceHolders := strings.Repeat("?,", len(keys)-1) + "?"
+	insertString := fmt.Sprintf("%s into %s (%s) values (%s);", act, table, cols, argPlaceHolders)
+	stmt, err := impl.DB.Prepare(insertString)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	result, err := stmt.Exec(values...)
+	if err != nil {
+		logger.LogE("Execute %s with args %v, failed, error: %s\n", insertString, args, err)
+	}
+	return result, err
+}
