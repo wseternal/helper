@@ -1,6 +1,8 @@
 package codec
 
 import (
+	"crypto/aes"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"testing"
@@ -41,4 +43,12 @@ func TestWrite(t *testing.T) {
 		B: 2,
 	}
 	WriteString(os.Stderr, res)
+}
+
+func TestAesCBC(t *testing.T) {
+	key, _ := hex.DecodeString("6368616e676520746869732070617373")
+	data, _ := hex.DecodeString("73c86d43a9d700a253a96c85b0f6b03ac9792e0e757f869cca306bd3cba1c62b")
+
+	decrypted, err := Decrypt(data[aes.BlockSize:], key, data[:aes.BlockSize])
+	fmt.Printf("%v %v\n", string(decrypted), err)
 }

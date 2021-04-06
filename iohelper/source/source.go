@@ -19,7 +19,9 @@ type Source struct {
 	filters []filter.Filter
 	Name    string
 
-	DataFiltered []byte
+	// if filters' output are not the same slice backend with input data,
+	// this field is set to the filter output and err is set to ModifyNotInPlace
+	DataFilterOutput []byte
 }
 
 var (
@@ -46,8 +48,7 @@ func (src *Source) Close() (err error) {
 // Read implements the io.Reader interface
 // filters of source may produce more data than the original data read from
 // the io.Reader, in that case, to avoid unnecessary copy, we hold
-// the data returned by filters in this field, and the read function
-// would set err as source.ModifyNotInPlace
+// the data returned by filters in the field DataFilterOutput, and set err as ModifyNotInPlace
 func (src *Source) Read(buffer []byte) (n int, err error) {
 	n, err = src.Reader.Read(buffer)
 	data := buffer[:n]
@@ -62,7 +63,7 @@ func (src *Source) Read(buffer []byte) (n int, err error) {
 		rEOF = true
 	}
 
-	src.DataFiltered = nil
+	src.DataFilterOutput = nil
 
 	for _, f := range src.filters {
 		data, err = f.Process(data, rEOF)
@@ -95,7 +96,7 @@ func (src *Source) Read(buffer []byte) (n int, err error) {
 			err = io.EOF
 		}
 	} else {
-		src.DataFiltered = data
+		src.DataFilterOutput = data
 		if rEOF {
 			err = EOFDataModifiedNotInPlace
 		} else {
