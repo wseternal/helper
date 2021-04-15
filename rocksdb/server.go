@@ -243,7 +243,13 @@ func (rdb *RDB) HandleHttpRequest(w http.ResponseWriter, req *http.Request) {
 		if err = jsonReq.UnmarshalFrom(data); err != nil {
 			goto out
 		}
-		res, err = rdb.HandleRPC(jsonReq, req.Context())
+
+		// result got from HandleRPC is already a rpc response in json format
+		// just write the json string directly
+		if res, err = rdb.HandleRPC(jsonReq, req.Context()); err == nil {
+			codec.WriteString(w, res)
+			return
+		}
 	default:
 		err = fmt.Errorf("request URL %s is not supported", req.URL.Path)
 	}
