@@ -102,6 +102,10 @@ func TestScanJSONObject(t *testing.T) {
 	obj, err = impl.FetchOne("select * from wxwork_app limit 1")
 	t.Logf("%v %v\n", obj.String(), err)
 	t.Logf("%d %d\n", obj.GetIntValue("updatets"), obj.GetIntValue("expiresin"))
+
+	obj, err = impl.FetchOne(`select * from wifi_ch_record_body as b right join wifi_ch_records as r on b.record_id=r.id where r.id=?`, 82306418)
+	t.Logf("impedance is null: %t\n", obj.Get("impedance") == nil)
+	t.Logf("%v %v\n", obj, err)
 }
 
 func TestInsertJsonObject(t *testing.T) {

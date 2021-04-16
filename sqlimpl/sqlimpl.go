@@ -251,7 +251,7 @@ func scanToJSONObject(columns []string, rows *sql.Rows) (*fastjson.JSONObject, e
 	valPtrs := make([]interface{}, cnt)
 
 	for i := 0; i < cnt; i++ {
-		valPtrs[i] = new(string)
+		valPtrs[i] = new(NullString)
 	}
 
 	var err error
@@ -259,7 +259,12 @@ func scanToJSONObject(columns []string, rows *sql.Rows) (*fastjson.JSONObject, e
 		return nil, err
 	}
 	for idx, col := range columns {
-		obj.Put(col, valPtrs[idx])
+		v := valPtrs[idx].(*NullString)
+		if v.Valid {
+			obj.Put(col, v.String)
+		} else {
+			obj.Put(col, nil)
+		}
 	}
 	return obj, nil
 }

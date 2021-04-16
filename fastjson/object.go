@@ -79,6 +79,10 @@ func (obj *JSONObject) Get(key string) interface{} {
 		return nil
 	}
 
+	if i == nil {
+		return nil
+	}
+
 	v := reflect.ValueOf(i)
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
