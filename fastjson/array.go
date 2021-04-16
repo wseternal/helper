@@ -19,6 +19,40 @@ func ArrayFrom(arr []interface{}) *JSONArray {
 	}
 }
 
+func (arr *JSONArray) Get(index int) interface{} {
+	if index >= arr.Size() {
+		return nil
+	}
+	return arr.entries[index]
+}
+
+func (arr *JSONArray) GetIntValue(index int) int64 {
+	return GetIntValue(arr.Get(index))
+}
+
+func (arr *JSONArray) GetFloatValue(index int) float64 {
+	return GetFloatValue(arr.Get(index))
+}
+
+func (arr *JSONArray) GetString(index int) string {
+	return GetString(arr.Get(index))
+}
+
+func (arr *JSONArray) GetBoolValue(index int) bool {
+	return GetBoolValue(arr.Get(index))
+}
+
+func (arr *JSONArray) GetJSONObject(index int) *JSONObject {
+	i := arr.Get(index)
+	if i == nil {
+		return nil
+	}
+	if v, ok := i.(map[string]interface{}); ok {
+		return ObjectFrom(v)
+	}
+	return nil
+}
+
 func (arr *JSONArray) Size() int {
 	return len(arr.entries)
 }

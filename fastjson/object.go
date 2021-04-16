@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 )
 
 type JSONObject struct {
@@ -61,15 +60,17 @@ func (obj *JSONObject) Remove(key string) interface{} {
 	}
 }
 
-func (obj *JSONObject) GetBoolValue(key string) bool {
-	i, found := obj.entries[key]
-	if !found {
-		return false
+func (obj *JSONObject) GetJSONArray(key string) (*JSONArray, error)  {
+	elem := obj.Get(key)
+	if elem == nil {
+		return NewArray(), nil
 	}
-	if ret, ok := i.(bool); ok {
-		return ret
+
+	arr, ok := elem.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("%v(%[1]T) can not be converted to json array", elem)
 	}
-	return false
+	return ArrayFrom(arr), nil
 }
 
 // Get would dereference the value found if it's a pointer
@@ -92,72 +93,25 @@ func (obj *JSONObject) Get(key string) interface{} {
 
 func (obj *JSONObject) GetIntValue(key string) int64 {
 	i := obj.Get(key)
-	if i == nil {
-		return 0
-	}
-	v := reflect.ValueOf(i)
-	k := v.Kind()
-	if k == reflect.Float32 || k == reflect.Float64 {
-		return int64(v.Float())
-	}
-	if k == reflect.String {
-		ret, _ := strconv.ParseInt(v.String(), 10, 64)
-		return ret
-	}
-	if k >= reflect.Int && k <= reflect.Float64 {
-		return v.Int()
-	}
-	if k >= reflect.Uint && k <= reflect.Uint64 {
-		return int64(v.Uint())
-	}
-	return 0
+	return GetIntValue(i)
 }
 
 func (obj *JSONObject) GetFloatValue(key string) float64 {
 	i := obj.Get(key)
-	if i == nil {
-		return 0
-	}
-
-	v := reflect.ValueOf(i)
-	k := v.Type().Kind()
-	if k >= reflect.Int && k <= reflect.Int64 {
-		return float64(v.Int())
-	}
-	if k >= reflect.Uint && k <= reflect.Uint64 {
-		return float64(v.Uint())
-	}
-	if k == reflect.Float32 || k == reflect.Float64 {
-		return v.Float()
-	}
-	return 0
+	return GetFloatValue(i)
 }
 
 func (obj *JSONObject) GetString(key string) string {
 	v := obj.Get(key)
+	return GetString(v)
+}
 
-	switch t := v.(type) {
-	case nil:
-		return "null"
-	case JSONObject:
-		return t.String()
-	case JSONArray:
-		return t.String()
-	case map[string]interface{}:
-		return ObjectFrom(t).String()
-	case []interface{}:
-		return ArrayFrom(t).String()
-	case string:
-		return t
-	case int8, uint8, int16, uint16, int32, uint32, int64, uint64, int, uint:
-		return fmt.Sprintf("%d", t)
-	case float32, float64:
-		return fmt.Sprintf("%f", t)
-	case bool:
-		return fmt.Sprintf("%t", t)
-	default:
-		return fmt.Sprintf("%v", t)
+func (obj *JSONObject) GetBoolValue(key string) bool {
+	i, found := obj.entries[key]
+	if !found {
+		return false
 	}
+	return GetBoolValue(i)
 }
 
 func ParseObject(data string) (*JSONObject, error) {
