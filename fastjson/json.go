@@ -38,6 +38,10 @@ func GetFloatValue(i interface{}) float64 {
 
 	v := reflect.ValueOf(i)
 	k := v.Type().Kind()
+	if k == reflect.String {
+		ret, _ := strconv.ParseFloat(v.String(), 64)
+		return ret
+	}
 	if k >= reflect.Int && k <= reflect.Int64 {
 		return float64(v.Int())
 	}
@@ -60,8 +64,8 @@ func GetIntValue(i interface{}) int64 {
 		return int64(v.Float())
 	}
 	if k == reflect.String {
-		ret, _ := strconv.ParseInt(v.String(), 10, 64)
-		return ret
+		ret, _ := strconv.ParseFloat(v.String(), 64)
+		return int64(ret)
 	}
 	if k >= reflect.Int && k <= reflect.Float64 {
 		return v.Int()

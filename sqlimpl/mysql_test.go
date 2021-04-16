@@ -6,6 +6,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"mime/multipart"
+	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -123,5 +127,106 @@ func TestInsertJsonObject(t *testing.T) {
 	obj.Put("lat", "123")
 	obj.Put("lng", "234")
 	res, err := impl.Insert("scale_location", true, obj)
+	fmt.Printf("%v %v\n", res, err)
+}
+
+func getScaleRecord(impl *SQLImpl, rid int64) (*fastjson.JSONObject, error) {
+	obj, err := impl.FetchOne("select * from wifi_ch_record_body as b right join wifi_ch_records as r on b.record_id=r.id where r.id=?", rid)
+	if err != nil {
+		return nil, err
+	}
+	if obj == nil {
+		return nil, fmt.Errorf("no record exists for record_id: %d", rid)
+	}
+
+	ret := fastjson.NewObject()
+
+	impedance := obj.GetIntValue("impedance")
+	age := obj.GetIntValue("age")
+	height := obj.GetIntValue("height")
+	weight := obj.GetIntValue("weight")
+	bmi := obj.GetFloatValue("bmi")
+	ret.Put("height", height)
+	ret.Put("weight", weight)
+	ret.Put("bmi", bmi)
+	ret.Put("nickname", obj.Get("nickname"))
+	ret.Put("add_time", obj.Get("add_time"))
+	if age == 0 {
+		age = 30
+	}
+
+	gender := obj.GetString("gender")
+
+	if impedance > 0 {
+		// prepare bodyfat data
+		var resp *http.Response
+		var bodyfatRequest *http.Request
+
+		body := new(bytes.Buffer)
+		part := multipart.NewWriter(body)
+		part.WriteField("weight", fmt.Sprintf("%d", weight*10))
+		part.WriteField("height", fmt.Sprintf("%d", height))
+		part.WriteField("impedance", fmt.Sprintf("%d", impedance))
+		part.WriteField("age", fmt.Sprintf("%d", age))
+
+		part.Close()
+
+		bodyfatRequest, err = http.NewRequest(http.MethodPost, "http://srv.cloudfi.cn/api/bodyfat/get", body)
+		bodyfatRequest.Header.Add("Content-Type", part.FormDataContentType())
+		if resp, err = http.DefaultClient.Do(bodyfatRequest); err != nil {
+			fmt.Fprintf(os.Stderr, "bodyfat request with body %s failed, %s\n", body.String(), err)
+			goto out
+		}
+		var data []byte
+		if data, err = ioutil.ReadAll(resp.Body); err != nil {
+			fmt.Fprintf(os.Stderr, "read bodyfat response failed, %s\n", err)
+			goto out
+		}
+
+		var bodyfat *fastjson.JSONObject
+		if bodyfat, err = fastjson.ParseObject(string(data)); err != nil {
+			fmt.Fprintf(os.Stderr, "unmarshal %s to json object failed, %s\n", string(data), err)
+			goto out
+		}
+		if bodyfat.ContainsKey("error") {
+			fmt.Fprintf(os.Stderr, "error set in bodyfat response: %s\n", bodyfat.GetString("error"))
+			goto out
+		}
+
+		var result *fastjson.JSONArray
+		if result, err = bodyfat.GetJSONArray("result"); err != nil {
+			fmt.Fprintf(os.Stderr, "convert bodyfat result %s to json array failed, %s\n", string(data), err)
+			goto out
+		}
+		if result.Size() != 2 {
+			fmt.Fprintf(os.Stderr, "invalid size for bodyfat result: %s\n", result)
+			goto out
+		}
+
+		// result[0] is for female; result[1] is for male
+		switch gender {
+		case "1":
+			ret.Put("bodyfat", result.GetJSONObject(1))
+		case "0":
+			ret.Put("bodyfat", result.GetJSONObject(0))
+		default:
+			// if gender is unknown, regard it as male
+			ret.Put("bodyfat", result.GetJSONObject(1))
+
+		}
+		resp.Body.Close()
+	}
+out:
+	return ret, nil
+}
+
+func TestSandbox(t *testing.T) {
+	dsn = "root:Zkzx3411@tcp(www.cloudfi.cn:3306)/wifiadx"
+	impl, err := ConnectDB("mysql", dsn)
+	if err != nil {
+		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
+	}
+	defer impl.Close()
+	res, err := getScaleRecord(impl, 128846051)
 	fmt.Printf("%v %v\n", res, err)
 }
