@@ -230,3 +230,18 @@ func TestSandbox(t *testing.T) {
 	res, err := getScaleRecord(impl, 128846051)
 	fmt.Printf("%v %v\n", res, err)
 }
+
+func TestUpdate(t *testing.T) {
+	dsn = "root:Zkzx3411@tcp(www.cloudfi.cn:3306)/wifiadx"
+	impl, err := ConnectDB("mysql", dsn)
+	if err != nil {
+		t.Fatalf("connect to db %s failed, error: %s\n", dsn, err)
+	}
+	defer impl.Close()
+
+	param := fastjson.NewObject()
+	param.Put("ticket", "testticket")
+	param.Put("ticket_updatets", time.Now().Unix())
+	res, err := impl.Update("wxwork_suite", param, "id=?", "xxxx")
+	fmt.Printf("%v %v\n", res, err)
+}

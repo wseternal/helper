@@ -6,12 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	`os`
 	"strings"
 	"time"
 
 	"github.com/wseternal/helper/fastjson"
-
-	"github.com/wseternal/helper/logger"
 
 	// add mysql driver implement
 	_ "github.com/go-sql-driver/mysql"
@@ -121,10 +120,10 @@ func (impl *SQLImpl) InitTables(tables []*DataTable) error {
 
 	rollback := false
 	for _, s := range tables {
-		logger.LogD("create table %s %s\n", s.Name, s.CreateStatement)
+		fmt.Printf("create table %s %s\n", s.Name, s.CreateStatement)
 		_, err = tx.Exec(s.CreateStatement)
 		if err != nil {
-			logger.LogE("create table %s %s failed\n", s.Name, s.CreateStatement)
+			fmt.Fprintf(os.Stderr, "create table %s %s failed\n", s.Name, s.CreateStatement)
 			rollback = true
 			goto out
 		}
@@ -136,7 +135,7 @@ out:
 		for i, t := range tables {
 			tableNames[i] = t.Name
 		}
-		logger.LogE("roll back creating table actions as error occurred\n")
+		fmt.Fprintf(os.Stderr, "roll back creating table actions as error occurred\n")
 		switch impl.Driver {
 		case "mysql":
 			tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", strings.Join(tableNames, ",")))
@@ -214,7 +213,7 @@ func (t *DataTable) Insert(keys []string, args ...interface{}) (sql.Result, erro
 	defer stmt.Close()
 	result, err := stmt.Exec(args...)
 	if err != nil {
-		logger.LogE("Execute %s with args %v, failed, error: %s\n", insertString, args, err)
+		fmt.Fprintf(os.Stderr, "Execute %s with args %v, failed, error: %s\n", insertString, args, err)
 	}
 	return result, err
 }
@@ -239,7 +238,7 @@ func (t *DataTable) Update(condition string, keys []string, args ...interface{})
 	updateString := fmt.Sprintf("update %s set %s %s;", t.Name, setStr, condition)
 	result, err := t.impl.DB.Exec(updateString, args...)
 	if err != nil {
-		logger.LogE("Execute %s failed, error: %s\n", updateString, err)
+		fmt.Fprintf(os.Stderr, "Execute %s failed, error: %s\n", updateString, err)
 	}
 	return result, err
 }
@@ -326,7 +325,34 @@ func (impl *SQLImpl) Insert(table string, replace bool, args *fastjson.JSONObjec
 	defer stmt.Close()
 	result, err := stmt.Exec(values...)
 	if err != nil {
-		logger.LogE("Execute %s with args %v, failed, error: %s\n", insertString, args, err)
+		fmt.Fprintf(os.Stderr, "Execute %s with args %v, failed, error: %s\n", insertString, args, err)
+	}
+	return result, err
+}
+
+func (impl *SQLImpl) Update(table string, args *fastjson.JSONObject, where string, whereArgs ...interface{}) (sql.Result, error) {
+	if args == nil || len(args.Keys()) == 0 {
+		return nil, errors.New("non-empty args is required to update table")
+	}
+	keys, values := args.Entries()
+	var updateSets  []string
+
+	for _, key := range keys {
+		updateSets = append(updateSets, fmt.Sprintf("%s=?", key))
+	}
+
+	updateString := fmt.Sprintf("update %s set %s where %s", table, strings.Join(updateSets, ","), where)
+	stmt, err := impl.DB.Prepare(updateString)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	values = append(values, whereArgs...)
+
+	result, err := stmt.Exec(values...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "execute %s with args %v failed, error: %s\n", updateString, values, err)
 	}
 	return result, err
 }
