@@ -97,3 +97,12 @@ func (m *Map) ValueSlice() interface{} {
 	m.RUnlock()
 	return s.Interface()
 }
+
+func (m *Map) ForEach(cb func(key, value interface{})) {
+	m.RLock()
+	iter := m.elems.MapRange()
+	for iter.Next() {
+		cb(iter.Key().Interface(), iter.Value().Interface())
+	}
+	m.RUnlock()
+}
