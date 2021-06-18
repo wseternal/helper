@@ -24,5 +24,7 @@ func TestSandbox(t *testing.T) {
 	}
 	fmt.Printf("%t %t\n", m.Has("k1"), m.Has("k2"))
 	fmt.Printf("%s\n", m.Get("k2").(string))
-	fmt.Printf("%+v\n", m.ValueSlice().([]string))
+	fmt.Printf("size: %d\n", m.Size())
+	fmt.Printf("keys: %+v\n", m.KeySlice().([]string))
+	fmt.Printf("values: %+v\n", m.ValueSlice().([]string))
 }

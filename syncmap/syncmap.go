@@ -106,3 +106,23 @@ func (m *Map) ForEach(cb func(key, value interface{})) {
 	}
 	m.RUnlock()
 }
+
+func (m *Map) Size() int {
+	return m.elems.Len()
+}
+
+func (m *Map) Range() *reflect.MapIter {
+	return m.elems.MapRange()
+}
+
+// KeySlice return slice with given key type, e.g: arr := m.KeySlice().([]string)
+func (m *Map) KeySlice() interface{} {
+	s := reflect.MakeSlice(reflect.SliceOf(m.keyType), 0, 0)
+	m.RLock()
+	keys := m.elems.MapKeys()
+	m.RUnlock()
+	for _, key := range keys {
+		s = reflect.Append(s, key)
+	}
+	return s.Interface()
+}
