@@ -3,6 +3,7 @@ package codec
 import (
 	"crypto/aes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -10,6 +11,19 @@ import (
 
 type info struct {
 	A, B int
+}
+
+func TestJsonUnmarshalFrom(t *testing.T) {
+	type Demo struct {
+		K1 string
+		K2 int `json:",string"`
+	}
+	s := `{"k1":"v1", "k2":"2222"}`
+	obj := &Demo{}
+	json.Unmarshal([]byte(s), obj)
+	fmt.Printf("%+v\n", *obj)
+	fmt.Printf("%s\n", JsonMarshal(obj))
+
 }
 
 func TestGobCodec(t *testing.T) {
